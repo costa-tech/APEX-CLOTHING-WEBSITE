@@ -44,6 +44,110 @@
     backdrop-filter: blur(10px);
     background-color: rgba(255, 255, 255, 0.9);
   }
+  
+  /* 3D Transform Utilities */
+  .transform-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .rotate-x-15 {
+    transform: rotateX(15deg);
+  }
+  
+  .rotate-y-15 {
+    transform: rotateY(15deg);
+  }
+  
+  /* Splash Screen Animations */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 1s ease-out;
+  }
+}
+
+/* Keyframe Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  }
+  to {
+    text-shadow: 0 0 40px rgba(255, 255, 255, 0.8), 0 0 60px rgba(255, 255, 255, 0.6);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Smooth transitions for all elements */
+* {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Enhanced gradient backgrounds */
+.bg-gradient-dark {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #000000 50%, #1a1a1a 75%, #2d2d2d 100%);
+}
+
+.bg-gradient-shimmer {
+  background: linear-gradient(45deg, 
+    rgba(255,255,255,0.1) 0%,
+    rgba(255,255,255,0.3) 25%,
+    rgba(255,255,255,0.1) 50%,
+    rgba(255,255,255,0.3) 75%,
+    rgba(255,255,255,0.1) 100%
+  );
+  background-size: 400% 400%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Custom scrollbar */

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
@@ -11,6 +11,9 @@ import { fetchWishlist } from './store/slices/wishlistSlice';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import AdminLayout from './components/layout/AdminLayout';
+
+// UI Components
+import SplashScreen from './components/ui/SplashScreen';
 
 // Pages
 import Home from './pages/Home';
@@ -45,6 +48,7 @@ function AppContent() {
   const location = useLocation();
   const { user, isAuthenticated } = useSelector(state => state.auth);
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -57,6 +61,20 @@ function AppContent() {
       dispatch(fetchWishlist());
     }
   }, [dispatch, isAuthenticated, user]);
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  // Handle splash screen completion
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+  };
+
+  // Show splash screen first
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
 
   if (isAdminRoute) {
     return (
