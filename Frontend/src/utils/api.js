@@ -1,0 +1,67 @@
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+console.log('🔗 API Base URL:', API_BASE_URL);
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000, // 10 second timeout
+});
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Log requests in development
+    if (import.meta.env.DEV) {
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
+    
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle common errors
+api.interceptors.response.use(
+  (response) => {
+    // Log successful responses in development
+    if (import.meta.env.DEV) {
+      console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`, response.status);
+    }
+    return response.data;
+  },
+  (error) => {
+    // Log errors in development
+    if (import.meta.env.DEV) {
+      console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error.response?.status, error.message);
+    }
+    
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    
+    // Network error handling
+    if (!error.response) {
+      console.error('🌐 Network Error: Could not connect to backend server');
+      // You could show a toast notification here
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default api;
