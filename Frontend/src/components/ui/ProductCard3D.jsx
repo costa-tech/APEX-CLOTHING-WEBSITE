@@ -28,8 +28,10 @@ const ProductCard3D = ({ product, index = 0 }) => {
 
   const handleAddToCart = (e) => {
     console.log('🛒 Add to Cart clicked!', product);
-    e.preventDefault();
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const productImage = product.image || product.images?.[0] || 'https://via.placeholder.com/400';
     const productPrice = product.salePrice || product.price;
     dispatch(addToCart({
@@ -125,7 +127,7 @@ const ProductCard3D = ({ product, index = 0 }) => {
       className="group relative"
     >
       <motion.div
-        className="relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer"
+        className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onMouseMove={handleMouseMove}
@@ -180,11 +182,11 @@ const ProductCard3D = ({ product, index = 0 }) => {
                 variants={actionButtonVariants}
                 animate={isHovered ? "hover" : "rest"}
                 onClick={handleQuickView}
-                className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors pointer-events-auto cursor-pointer"
+                className="p-3 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-700 transition-colors pointer-events-auto cursor-pointer"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <HiOutlineEye className="w-5 h-5 text-gray-700" />
+                <HiOutlineEye className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               </motion.button>
 
               {/* Add to Cart */}
@@ -193,7 +195,7 @@ const ProductCard3D = ({ product, index = 0 }) => {
                 variants={actionButtonVariants}
                 animate={isHovered ? "hover" : "rest"}
                 onClick={handleAddToCart}
-                className="p-3 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-colors pointer-events-auto cursor-pointer"
+                className="p-3 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors pointer-events-auto cursor-pointer"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
@@ -206,11 +208,11 @@ const ProductCard3D = ({ product, index = 0 }) => {
                 variants={actionButtonVariants}
                 animate={isHovered ? "hover" : "rest"}
                 onClick={handleAddToWishlist}
-                className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors pointer-events-auto cursor-pointer"
+                className="p-3 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-700 transition-colors pointer-events-auto cursor-pointer"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <HiOutlineHeart className="w-5 h-5 text-gray-700" />
+                <HiOutlineHeart className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               </motion.button>
             </div>
           </motion.div>
@@ -253,7 +255,7 @@ const ProductCard3D = ({ product, index = 0 }) => {
         >
           <Link to={`/products/${product.id}`} className="block group">
             <motion.h3 
-              className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-black transition-colors"
+              className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-black dark:group-hover:text-gray-200 transition-colors"
               whileHover={{ x: 5 }}
               transition={{ type: 'spring', stiffness: 300 }}
             >
@@ -261,7 +263,7 @@ const ProductCard3D = ({ product, index = 0 }) => {
             </motion.h3>
             
             <motion.p 
-              className="text-gray-600 text-sm mb-3 line-clamp-2"
+              className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2"
               style={{
                 transform: isHovered ? 'translateZ(10px)' : 'translateZ(0px)'
               }}
@@ -280,15 +282,15 @@ const ProductCard3D = ({ product, index = 0 }) => {
               <div className="flex items-center space-x-2">
                 {(product.salePrice || product.comparePrice) ? (
                   <>
-                    <span className="text-xl font-bold text-red-600">
+                    <span className="text-xl font-bold text-red-600 dark:text-red-400">
                       ${product.salePrice || product.price}
                     </span>
-                    <span className="text-sm text-gray-500 line-through">
+                    <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
                       ${product.comparePrice || product.price}
                     </span>
                   </>
                 ) : (
-                  <span className="text-xl font-bold text-gray-900">
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">
                     ${product.price}
                   </span>
                 )}
@@ -306,7 +308,7 @@ const ProductCard3D = ({ product, index = 0 }) => {
                       className={`text-sm ${
                         i < Math.floor(product.rating || 4.5)
                           ? 'text-yellow-400'
-                          : 'text-gray-300'
+                          : 'text-gray-300 dark:text-gray-600'
                       }`}
                     >
                       ★
@@ -319,8 +321,13 @@ const ProductCard3D = ({ product, index = 0 }) => {
 
           {/* Quick Add Button */}
           <motion.button
-            onClick={handleAddToCart}
-            className="w-full mt-4 bg-gray-100 hover:bg-black hover:text-white text-gray-900 py-3 rounded-lg font-medium transition-all duration-300 pointer-events-auto cursor-pointer"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddToCart(e);
+            }}
+            className="w-full mt-4 bg-gray-100 hover:bg-black hover:text-white text-gray-900 py-3 rounded-lg font-medium transition-all duration-300 pointer-events-auto cursor-pointer relative z-10"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             style={{

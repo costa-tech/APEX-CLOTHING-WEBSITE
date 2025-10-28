@@ -32,6 +32,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
       images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'],
       category: 'Men',
+      subcategory: 'Tops',
       onSale: true,
     },
     {
@@ -41,6 +42,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400',
       images: ['https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400'],
       category: 'Men',
+      subcategory: 'Outerwear',
     },
     {
       id: 3,
@@ -50,6 +52,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
       images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400'],
       category: 'Accessories',
+      subcategory: null,
       onSale: true,
     },
     {
@@ -59,6 +62,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400',
       images: ['https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400'],
       category: 'Women',
+      subcategory: 'Dresses',
     },
     {
       id: 5,
@@ -67,6 +71,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400',
       images: ['https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400'],
       category: 'Accessories',
+      subcategory: null,
     },
     {
       id: 6,
@@ -75,6 +80,7 @@ const Home3D = () => {
       image: 'https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400',
       images: ['https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400'],
       category: 'Men',
+      subcategory: 'Tops',
     },
   ];
 
@@ -110,9 +116,9 @@ const Home3D = () => {
       {/* New Arrivals Section */}
       <section className="py-20 lg:py-32 relative overflow-hidden">
         {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-purple-50/30" />
-        <div className="absolute top-20 left-10 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-40 h-40 bg-blue-200/20 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900/10" />
+        <div className="absolute top-20 left-10 w-32 h-32 bg-purple-200/20 dark:bg-purple-600/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-blue-200/20 dark:bg-blue-600/10 rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
@@ -122,7 +128,7 @@ const Home3D = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-purple-900 to-blue-900 bg-clip-text text-transparent">
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-purple-900 to-blue-900 dark:from-white dark:via-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
               New Arrivals
             </h2>
             <motion.div 
@@ -132,7 +138,7 @@ const Home3D = () => {
               viewport={{ once: true }}
               transition={{ duration: 1, delay: 0.5 }}
             />
-            <p className="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
               Fresh styles that push the boundaries of fashion. Each piece crafted with precision and designed for those who dare to be different.
             </p>
           </motion.div>
@@ -141,38 +147,6 @@ const Home3D = () => {
             products={newArrivals} 
             showTitle={false}
           />
-          
-          <motion.div 
-            className="text-center mt-16"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <Link to="/products">
-              <motion.button
-                className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full overflow-hidden shadow-xl"
-                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                />
-                <span className="relative z-10">Explore All Products</span>
-                <motion.div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-20"
-                  animate={{
-                    background: [
-                      "radial-gradient(circle at 0% 50%, white 0%, transparent 50%)",
-                      "radial-gradient(circle at 100% 50%, white 0%, transparent 50%)",
-                    ],
-                  }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-              </motion.button>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
@@ -314,9 +288,9 @@ const Home3D = () => {
       </section>
 
       {/* Stats Section with 3D Animations */}
-      <section ref={statsRef} className="py-20 lg:py-32 relative overflow-hidden bg-black">
+      <section ref={statsRef} className="py-20 lg:py-32 relative overflow-hidden bg-black dark:bg-gray-950">
         {/* Animated Background Grid */}
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-10 dark:opacity-5">
           <div className="absolute inset-0" 
                style={{
                  backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
@@ -368,11 +342,11 @@ const Home3D = () => {
                   transition={{ duration: 0.6 }}
                   style={{ perspective: "1000px" }}
                 >
-                  <div className="text-5xl lg:text-7xl font-black mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent group-hover:from-purple-400 group-hover:to-blue-400 transition-all duration-300">
+                  <div className="text-5xl lg:text-7xl font-black mb-4 bg-gradient-to-r from-white to-gray-300 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent group-hover:from-purple-400 group-hover:to-blue-400 transition-all duration-300">
                     {stat.number}
                   </div>
                 </motion.div>
-                <div className="text-gray-400 text-lg group-hover:text-white transition-colors duration-300">
+                <div className="text-gray-400 dark:text-gray-500 text-lg group-hover:text-white dark:group-hover:text-gray-200 transition-colors duration-300">
                   {stat.label}
                 </div>
                 
@@ -394,7 +368,7 @@ const Home3D = () => {
 
       {/* Newsletter with enhanced styling */}
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-blue-900/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-blue-900/20 dark:from-purple-900/30 dark:to-blue-900/30" />
         <Newsletter />
       </div>
     </div>

@@ -55,25 +55,25 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-gray-900 dark:bg-black text-white">
       {/* Newsletter Section */}
-      <div className="border-b border-gray-800">
+      <div className="border-b border-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center max-w-2xl mx-auto">
             <h3 className="text-2xl font-bold mb-4">Stay in the Loop</h3>
-            <p className="text-gray-300 mb-6">
+            <p className="text-gray-300 dark:text-gray-400 mb-6">
               Be the first to know about new collections, exclusive sales, and special events.
             </p>
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Enter your email address"
-                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent text-white placeholder-gray-400"
+                className="flex-1 px-4 py-3 bg-gray-800 dark:bg-gray-900 border border-gray-700 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent text-white placeholder-gray-400"
                 required
               />
               <button
                 type="submit"
-                className="px-6 py-3 bg-white text-black rounded-md font-medium hover:bg-gray-100 transition-colors duration-200"
+                className="px-6 py-3 bg-white dark:bg-gray-200 text-black rounded-md font-medium hover:bg-gray-100 dark:hover:bg-gray-300 transition-colors duration-200"
               >
                 Subscribe
               </button>
@@ -91,7 +91,7 @@ const Footer = () => {
             <Link to="/" className="inline-block mb-4">
               <h2 className="text-3xl font-bold">APEX</h2>
             </Link>
-            <p className="text-gray-300 mb-6 max-w-sm">
+            <p className="text-gray-300 dark:text-gray-400 mb-6 max-w-sm">
               Premium clothing brand delivering exceptional quality and style. 
               Elevate your wardrobe with our curated collections.
             </p>
@@ -100,15 +100,15 @@ const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <HiOutlineMail className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-300">contact@apex.com</span>
+                <span className="text-sm text-gray-300 dark:text-gray-400">contact@apex.com</span>
               </div>
               <div className="flex items-center space-x-3">
                 <HiOutlinePhone className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-300">+1 (555) 123-4567</span>
+                <span className="text-sm text-gray-300 dark:text-gray-400">+1 (555) 123-4567</span>
               </div>
               <div className="flex items-center space-x-3">
                 <HiOutlineLocationMarker className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-300">New York, NY 10001</span>
+                <span className="text-sm text-gray-300 dark:text-gray-400">New York, NY 10001</span>
               </div>
             </div>
           </div>
@@ -121,7 +121,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     to={link.path}
-                    className="text-gray-300 hover:text-white transition-colors duration-200 text-sm"
+                    className="text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors duration-200 text-sm"
                   >
                     {link.name}
                   </Link>
@@ -138,7 +138,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     to={link.path}
-                    className="text-gray-300 hover:text-white transition-colors duration-200 text-sm"
+                    className="text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors duration-200 text-sm"
                   >
                     {link.name}
                   </Link>
@@ -155,7 +155,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     to={link.path}
-                    className="text-gray-300 hover:text-white transition-colors duration-200 text-sm"
+                    className="text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors duration-200 text-sm"
                   >
                     {link.name}
                   </Link>
@@ -172,7 +172,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <Link
                     to={link.path}
-                    className="text-gray-300 hover:text-white transition-colors duration-200 text-sm"
+                    className="text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors duration-200 text-sm"
                   >
                     {link.name}
                   </Link>
@@ -184,7 +184,7 @@ const Footer = () => {
       </div>
 
       {/* Bottom Section */}
-      <div className="border-t border-gray-800">
+      <div className="border-t border-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             
@@ -203,7 +203,7 @@ const Footer = () => {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-white transition-colors duration-200"
+                    className="text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors duration-200"
                     aria-label={social.name}
                   >
                     <IconComponent className="w-5 h-5" />
@@ -219,7 +219,7 @@ const Footer = () => {
                 {['Visa', 'Mastercard', 'PayPal', 'Apple Pay'].map((method) => (
                   <div
                     key={method}
-                    className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-300"
+                    className="px-2 py-1 bg-gray-800 dark:bg-gray-900 rounded text-xs text-gray-300 dark:text-gray-400"
                   >
                     {method}
                   </div>

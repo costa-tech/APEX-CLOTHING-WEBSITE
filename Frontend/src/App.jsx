@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
 import { store } from './store/store';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { checkAuth } from './store/slices/authSlice';
 import { fetchCart } from './store/slices/cartSlice';
 import { fetchWishlist } from './store/slices/wishlistSlice';
@@ -24,8 +25,24 @@ import Cart from './pages/Cart';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Collections from './pages/Collections';
+import SubcategoryProducts from './pages/SubcategoryProducts';
 import About from './pages/About';
 import Wishlist from './pages/Wishlist';
+
+// Footer Pages
+import ContactUs from './pages/ContactUs';
+import SizeGuide from './pages/SizeGuide';
+import ShippingInfo from './pages/ShippingInfo';
+import Returns from './pages/Returns';
+import FAQ from './pages/FAQ';
+import Careers from './pages/Careers';
+import Press from './pages/Press';
+import Sustainability from './pages/Sustainability';
+import Investors from './pages/Investors';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import CookiePolicy from './pages/CookiePolicy';
+import Accessibility from './pages/Accessibility';
 
 // Lazy-loaded components
 import {
@@ -160,19 +177,39 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
       <Navbar />      <main className="flex-grow">
         <ErrorBoundary>          <Routes>          {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<Products />} />
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/collections" element={<Collections />} />
+            <Route path="/collections/:category/:subcategory" element={<SubcategoryProducts />} />
             <Route path="/collections/:category" element={<Collections />} />
             <Route path="/about" element={<About />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* Footer Pages - Help */}
+            <Route path="/contact" element={<ContactUs />} />
+            <Route path="/size-guide" element={<SizeGuide />} />
+            <Route path="/shipping" element={<ShippingInfo />} />
+            <Route path="/returns" element={<Returns />} />
+            <Route path="/faq" element={<FAQ />} />
+            
+            {/* Footer Pages - Company */}
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/press" element={<Press />} />
+            <Route path="/sustainability" element={<Sustainability />} />
+            <Route path="/investors" element={<Investors />} />
+            
+            {/* Footer Pages - Legal */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
+            <Route path="/accessibility" element={<Accessibility />} />
             
             {/* Protected Routes - Lazy Loaded */}
             <Route path="/checkout" element={
@@ -221,9 +258,11 @@ function AppContent() {
 function App() {
   return (
     <Provider store={store}>
-      <Router>
-        <AppContent />
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </ThemeProvider>
     </Provider>
   );
 }

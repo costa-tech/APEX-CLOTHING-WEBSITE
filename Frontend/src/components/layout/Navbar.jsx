@@ -7,11 +7,14 @@ import {
   HiOutlineSearch,
   HiOutlineMenu,
   HiOutlineX,
-  HiOutlineHeart
+  HiOutlineHeart,
+  HiOutlineMoon,
+  HiOutlineSun
 } from 'react-icons/hi';
 import { logout } from '../../store/slices/authSlice';
 import { toggleCart } from '../../store/slices/cartSlice';
 import { searchProducts, setSearchQuery } from '../../store/slices/productSlice';
+import { useTheme } from '../../contexts/ThemeContext';
 import MobileCart from './MobileCart';
 import GlobalSearch from '../ui/GlobalSearch';
 
@@ -25,6 +28,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { isDarkMode, toggleTheme } = useTheme();
   
   const { isAuthenticated, user } = useSelector(state => state.auth);
   const { totalQuantity, isOpen: isCartOpen } = useSelector(state => state.cart);
@@ -65,46 +69,68 @@ const Navbar = () => {
     { name: 'Women', path: '/collections/Women' },
     { name: 'Accessories', path: '/collections/Accessories' },
     { name: 'About', path: '/about' },
+    { name: 'Contact Us', path: '/contact' },
     { name: 'Sale', path: '/collections?sale=true' },
   ];
 
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'backdrop-blur-light shadow-lg' : 'bg-white'
+        isScrolled ? 'backdrop-blur-light shadow-lg' : 'bg-white dark:bg-gray-900'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
             
             {/* Logo */}
             <Link to="/" className="flex-shrink-0">
-              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight gradient-text">
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight gradient-text dark:text-white">
                 APEX
               </h1>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center space-x-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className="text-gray-700 hover:text-black font-medium transition-colors duration-200 relative group"
-                >
-                  {link.name}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-black transition-all duration-200 group-hover:w-full"></span>
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = location.pathname === link.path;
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    className={`font-medium transition-colors duration-200 relative group ${
+                      isActive ? 'text-black dark:text-white' : 'text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white'
+                    }`}
+                  >
+                    {link.name}
+                    <span className={`absolute -bottom-1 left-0 h-0.5 bg-black dark:bg-white transition-all duration-200 ${
+                      isActive ? 'w-full' : 'w-0 group-hover:w-full'
+                    }`}></span>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center space-x-4">
-              {/* Search */}              <button
+              {/* Search */}
+              <button
                 onClick={() => setShowGlobalSearch(true)}
-                className="p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                className="p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
                 aria-label="Search"
               >
                 <HiOutlineSearch className="w-6 h-6" />
+              </button>
+
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
+                aria-label="Toggle Dark Mode"
+              >
+                {isDarkMode ? (
+                  <HiOutlineSun className="w-6 h-6" />
+                ) : (
+                  <HiOutlineMoon className="w-6 h-6" />
+                )}
               </button>
 
               {/* User Menu */}
@@ -172,7 +198,7 @@ const Navbar = () => {
               {/* Wishlist */}
               <Link
                 to="/wishlist"
-                className="relative p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                className="relative p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
                 aria-label="Wishlist"
               >
                 <HiOutlineHeart className="w-6 h-6" />
@@ -186,11 +212,11 @@ const Navbar = () => {
               {/* Cart */}
               <button
                 onClick={() => dispatch(toggleCart())}
-                className="relative p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                className="relative p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
                 aria-label="Shopping cart"
               >
                 <HiOutlineShoppingBag className="w-6 h-6" />                {totalQuantity > 0 ? (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
                     {totalQuantity}
                   </span>
                 ) : null}
@@ -199,13 +225,26 @@ const Navbar = () => {
 
             {/* Mobile Menu Button */}
             <div className="lg:hidden flex items-center space-x-4">
+              {/* Dark Mode Toggle for Mobile */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
+                aria-label="Toggle Dark Mode"
+              >
+                {isDarkMode ? (
+                  <HiOutlineSun className="w-6 h-6" />
+                ) : (
+                  <HiOutlineMoon className="w-6 h-6" />
+                )}
+              </button>
+
               <button
                 onClick={() => dispatch(toggleCart())}
-                className="relative p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                className="relative p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
                 aria-label="Shopping cart"
               >
                 <HiOutlineShoppingBag className="w-6 h-6" />                {totalQuantity > 0 ? (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-black dark:bg-white text-white dark:text-black text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {totalQuantity}
                   </span>
                 ) : null}
@@ -213,7 +252,7 @@ const Navbar = () => {
               
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                className="p-2 text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-200"
                 aria-label="Menu"
               >
                 {isMenuOpen ? (
@@ -246,11 +285,11 @@ const Navbar = () => {
           ) : null}
         </div>        {/* Mobile Menu */}
         {isMenuOpen ? (
-          <div className="lg:hidden bg-white border-t animate-slide-up"><div className="px-4 py-4 space-y-4">
+          <div className="lg:hidden bg-white dark:bg-gray-900 border-t dark:border-gray-700 animate-slide-up"><div className="px-4 py-4 space-y-4">
               {/* Mobile Search */}
               <button
                 onClick={() => setShowGlobalSearch(true)}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
               >
                 <HiOutlineSearch className="w-5 h-5" />
                 <span>Search products, pages...</span>
@@ -262,7 +301,7 @@ const Navbar = () => {
                   <Link
                     key={link.name}
                     to={link.path}
-                    className="block py-2 text-gray-700 hover:text-black font-medium transition-colors duration-200"
+                    className="block py-2 text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white font-medium transition-colors duration-200"
                   >
                     {link.name}
                   </Link>

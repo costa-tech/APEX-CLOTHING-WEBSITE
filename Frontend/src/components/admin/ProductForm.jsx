@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import api from '../../utils/api';
 import {
   XMarkIcon,
   PhotoIcon,
@@ -11,7 +12,8 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    category: '',
+    category: '', // Men, Women, Accessories
+    subcategory: '', // Tops, Bottoms, Activewear, etc.
     brand: '',
     price: '',
     comparePrice: '',
@@ -43,16 +45,17 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   const [imagePreview, setImagePreview] = useState('');
   const [newTag, setNewTag] = useState('');
   const [activeTab, setActiveTab] = useState('general');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  const categories = [
-    'Tops',
-    'Bottoms',
-    'Outerwear',
-    'Activewear',
-    'Underwear',
-    'Accessories',
-    'Footwear',
-  ];
+  // Main categories
+  const mainCategories = ['Men', 'Women', 'Accessories'];
+
+  // Subcategories (only for Men and Women)
+  const subcategories = {
+    Men: ['Tops', 'Bottoms', 'Outerwear', 'Activewear', 'Underwear', 'Footwear'],
+    Women: ['Tops', 'Bottoms', 'Outerwear', 'Activewear', 'Underwear', 'Footwear', 'Dresses'],
+    Accessories: [], // No subcategories for accessories
+  };
 
   const statusOptions = [
     'Active',
@@ -118,19 +121,37 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
     }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
-        setImagePreview(imageUrl);
-        setFormData(prev => ({
-          ...prev,
-          images: [imageUrl, ...prev.images.filter(img => img !== imageUrl)],
-        }));
-      };
-      reader.readAsDataURL(file);
+      setUploadingImage(true);
+      try {
+        // Create form data for file upload
+        const formData = new FormData();
+        formData.append('image', file);
+
+        // Upload to backend to save in public/Images folder
+        const response = await api.post('/products/upload-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.data.status === 'success') {
+          const imageUrl = response.data.data.imagePath; // e.g., "/Images/product-123456.jpg"
+          setImagePreview(imageUrl);
+          setFormData(prev => ({
+            ...prev,
+            images: [imageUrl, ...prev.images.filter(img => img !== imageUrl)],
+          }));
+          toast.success('✅ Image uploaded successfully!');
+        }
+      } catch (error) {
+        console.error('Image upload error:', error);
+        toast.error('Failed to upload image');
+      } finally {
+        setUploadingImage(false);
+      }
     }
   };
 
@@ -213,10 +234,10 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">
             {product ? 'Edit Product' : 'Add New Product'}
           </h2>
@@ -228,9 +249,9 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b">
+          <div className="flex border-b flex-shrink-0">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -247,7 +268,7 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
             ))}
           </div>
 
-          {/* Content */}
+          {/* Content - Scrollable */}
           <div className="flex-1 overflow-y-auto p-6">
             {/* General Tab */}
             {activeTab === 'general' && (
@@ -302,18 +323,44 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
                     <select
                       name="category"
                       value={formData.category}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        // Reset subcategory when category changes
+                        setFormData({ ...formData, category: e.target.value, subcategory: '' });
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                       required
                     >
                       <option value="">Select Category</option>
-                      {categories.map((category) => (
+                      {mainCategories.map((category) => (
                         <option key={category} value={category}>
                           {category}
                         </option>
                       ))}
                     </select>
                   </div>
+
+                  {/* Subcategory - Only show for Men and Women */}
+                  {formData.category && formData.category !== 'Accessories' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Subcategory
+                      </label>
+                      <select
+                        name="subcategory"
+                        value={formData.subcategory}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                      >
+                        <option value="">Select Subcategory</option>
+                        {subcategories[formData.category]?.map((subcat) => (
+                          <option key={subcat} value={subcat}>
+                            {subcat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -748,8 +795,8 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end space-x-4 p-6 border-t bg-gray-50">
+          {/* Footer - Fixed at bottom */}
+          <div className="flex items-center justify-end space-x-4 p-6 border-t bg-gray-50 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}

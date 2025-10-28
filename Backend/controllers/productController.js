@@ -452,3 +452,51 @@ exports.deleteImage = async (req, res) => {
     });
   }
 };
+
+/**
+ * Upload product image to local storage (Frontend/public/Images)
+ */
+exports.uploadProductImage = async (req, res) => {
+  try {
+    const path = require('path');
+    const fs = require('fs');
+
+    if (!req.files || !req.files.image) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No image file uploaded',
+      });
+    }
+
+    const imageFile = req.files.image;
+    const timestamp = Date.now();
+    const fileName = `product-${timestamp}-${imageFile.name}`;
+    
+    // Path to Frontend/public/Images folder
+    const uploadPath = path.join(__dirname, '../../Frontend/public/Images', fileName);
+
+    // Create directory if it doesn't exist
+    const dir = path.dirname(uploadPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Move file to destination
+    await imageFile.mv(uploadPath);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Image uploaded successfully',
+      data: {
+        imagePath: `/Images/${fileName}`,
+        fileName: fileName,
+      },
+    });
+  } catch (error) {
+    console.error('Upload image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to upload image',
+    });
+  }
+};

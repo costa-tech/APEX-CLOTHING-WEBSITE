@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ProductForm from '../../components/admin/ProductForm';
+import api from '../../utils/api';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([
@@ -70,8 +71,28 @@ const AdminProducts = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  const categories = ['all', 'Tops', 'Bottoms', 'Accessories', 'Footwear'];
+  const categories = ['all', 'Men', 'Women', 'Accessories'];
   const statuses = ['all', 'Active', 'Inactive', 'Out of Stock'];
+
+  // Fetch products from backend on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/products');
+        if (response.data.status === 'success') {
+          setProducts(response.data.data.products || []);
+        }
+      } catch (error) {
+        console.error('Fetch products error:', error);
+        toast.error('Failed to load products');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
 
   const filteredProducts = products
     .filter((product) => {
@@ -100,12 +121,15 @@ const AdminProducts = () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       setLoading(true);
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setProducts(products.filter(product => product.id !== id));
-        toast.success('Product deleted successfully');
+        const response = await api.delete(`/products/${id}`);
+        
+        if (response.data.status === 'success') {
+          setProducts(products.filter(product => product.id !== id));
+          toast.success('✅ Product deleted successfully!');
+        }
       } catch (error) {
-        toast.error('Failed to delete product');
+        console.error('Delete product error:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete product');
       } finally {
         setLoading(false);
       }
@@ -148,32 +172,33 @@ const AdminProducts = () => {
   const handleSaveProduct = async (productData) => {
     setFormLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (editingProduct) {
         // Update existing product
-        setProducts(products.map(product => 
-          product.id === editingProduct.id 
-            ? { ...productData, id: editingProduct.id }
-            : product
-        ));
-        toast.success('Product updated successfully');
+        const response = await api.put(`/products/${editingProduct.id}`, productData);
+        
+        if (response.data.status === 'success') {
+          setProducts(products.map(product => 
+            product.id === editingProduct.id 
+              ? { ...response.data.data }
+              : product
+          ));
+          toast.success('✅ Product updated successfully!');
+        }
       } else {
         // Add new product
-        const newProduct = {
-          ...productData,
-          id: Math.max(...products.map(p => p.id)) + 1,
-          createdAt: new Date().toISOString().split('T')[0],
-          sales: 0,
-        };
-        setProducts([newProduct, ...products]);
-        toast.success('Product added successfully');
+        const response = await api.post('/products', productData);
+        
+        if (response.data.status === 'success') {
+          const newProduct = response.data.data;
+          setProducts([newProduct, ...products]);
+          toast.success('✅ Product added successfully!');
+        }
       }
       
       handleCloseForm();
     } catch (error) {
-      toast.error('Failed to save product');
+      console.error('Save product error:', error);
+      toast.error(error.response?.data?.message || 'Failed to save product');
     } finally {
       setFormLoading(false);
     }

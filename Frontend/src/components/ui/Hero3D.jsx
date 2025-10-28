@@ -78,7 +78,7 @@ const Hero3D = () => {
   return (
     <motion.section
       ref={containerRef}
-      className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100"
+      className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 pt-20"
       style={{ opacity, scale }}
     >
       {/* Animated Background Elements */}
@@ -164,7 +164,7 @@ const Hero3D = () => {
 
                 <motion.p
                   variants={itemVariants}
-                  className="text-xl lg:text-2xl text-gray-600 leading-relaxed max-w-lg"
+                  className="text-xl lg:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-lg"
                   style={{
                     textShadow: '0 2px 4px rgba(0,0,0,0.05)'
                   }}
@@ -187,7 +187,7 @@ const Hero3D = () => {
                 >
                   <Link
                     to="/products"
-                    className="inline-flex items-center justify-center px-8 py-4 bg-black text-white font-semibold rounded-full hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-black dark:bg-white text-white dark:text-black font-semibold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl"
                     style={{
                       background: 'linear-gradient(135deg, #000000 0%, #434343 100%)',
                       boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
@@ -213,7 +213,7 @@ const Hero3D = () => {
                 >
                   <Link
                     to="/about"
-                    className="inline-flex items-center justify-center px-8 py-4 bg-white text-black font-semibold rounded-full border-2 border-black hover:bg-black hover:text-white transition-all duration-300 shadow-lg hover:shadow-xl"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-white dark:bg-gray-800 text-black dark:text-white font-semibold rounded-full border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-all duration-300 shadow-lg hover:shadow-xl"
                   >
                     Learn More
                   </Link>
@@ -223,7 +223,7 @@ const Hero3D = () => {
               {/* Stats */}
               <motion.div
                 variants={itemVariants}
-                className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200"
+                className="grid grid-cols-3 gap-8 pt-8 border-t border-gray-200 dark:border-gray-700"
               >
                 {[
                   { number: '1000+', label: 'Products' },
@@ -236,10 +236,10 @@ const Hero3D = () => {
                     whileHover={{ y: -5 }}
                     transition={{ type: 'spring', stiffness: 300 }}
                   >
-                    <div className="text-2xl lg:text-3xl font-bold text-black">
+                    <div className="text-2xl lg:text-3xl font-bold text-black dark:text-white">
                       {stat.number}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {stat.label}
                     </div>
                   </motion.div>
@@ -283,7 +283,7 @@ const Hero3D = () => {
 
                 {/* Floating Elements */}
                 <motion.div
-                  className="absolute -top-4 -right-4 w-24 h-24 bg-white rounded-full shadow-xl flex items-center justify-center"
+                  className="absolute -top-4 -right-4 w-24 h-24 bg-white dark:bg-gray-700 rounded-full shadow-xl flex items-center justify-center"
                   animate={{ 
                     rotate: 360,
                     y: [0, -10, 0]
@@ -298,7 +298,7 @@ const Hero3D = () => {
                 </motion.div>
 
                 <motion.div
-                  className="absolute -bottom-4 -left-4 w-20 h-20 bg-black text-white rounded-full shadow-xl flex items-center justify-center font-bold"
+                  className="absolute -bottom-4 -left-4 w-20 h-20 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-xl flex items-center justify-center font-bold"
                   animate={{ 
                     y: [0, 10, 0],
                     rotate: [0, -5, 5, 0]
@@ -315,13 +315,13 @@ const Hero3D = () => {
 
                 {/* Price Tag */}
                 <motion.div
-                  className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg"
+                  className="absolute top-6 right-6 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg"
                   initial={{ scale: 0, rotate: -10 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ delay: 1, type: 'spring', stiffness: 300 }}
                   whileHover={{ scale: 1.05, rotate: 2 }}
                 >
-                  <span className="text-lg font-bold text-black">$89</span>
+                  <span className="text-lg font-bold text-black dark:text-white">$89</span>
                 </motion.div>
               </div>
             </motion.div>

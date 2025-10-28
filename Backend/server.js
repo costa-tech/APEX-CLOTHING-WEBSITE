@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const fileUpload = require('express-fileupload');
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-encoded bodies
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max file size
+}));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

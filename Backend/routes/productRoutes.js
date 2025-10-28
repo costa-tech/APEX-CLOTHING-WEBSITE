@@ -21,6 +21,7 @@ router.get('/category/:category', productController.getProductsByCategory);
 router.get('/search/:query', productController.searchProducts);
 
 // Protected routes (Admin only)
+router.post('/upload-image', verifyToken, isAdmin, productController.uploadProductImage); // Add this before other POST routes
 router.post('/', verifyToken, isAdmin, productValidation, validate, productController.createProduct);
 router.put('/:id', verifyToken, isAdmin, productValidation, validate, productController.updateProduct);
 router.delete('/:id', verifyToken, isAdmin, productController.deleteProduct);
