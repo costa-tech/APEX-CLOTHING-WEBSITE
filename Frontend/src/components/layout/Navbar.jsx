@@ -6,7 +6,8 @@ import {
   HiOutlineUser, 
   HiOutlineSearch,
   HiOutlineMenu,
-  HiOutlineX
+  HiOutlineX,
+  HiOutlineHeart
 } from 'react-icons/hi';
 import { logout } from '../../store/slices/authSlice';
 import { toggleCart } from '../../store/slices/cartSlice';
@@ -27,6 +28,7 @@ const Navbar = () => {
   
   const { isAuthenticated, user } = useSelector(state => state.auth);
   const { totalQuantity, isOpen: isCartOpen } = useSelector(state => state.cart);
+  const { items: wishlistItems } = useSelector(state => state.wishlist);
   const { searchQuery } = useSelector(state => state.products);
 
   useEffect(() => {
@@ -59,10 +61,11 @@ const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Men', path: '/products?category=Men' },
-    { name: 'Women', path: '/products?category=Women' },
-    { name: 'Accessories', path: '/products?category=Accessories' },
-    { name: 'Sale', path: '/products?sale=true' },
+    { name: 'Men', path: '/collections/Men' },
+    { name: 'Women', path: '/collections/Women' },
+    { name: 'Accessories', path: '/collections/Accessories' },
+    { name: 'About', path: '/about' },
+    { name: 'Sale', path: '/collections?sale=true' },
   ];
 
   return (
@@ -165,6 +168,20 @@ const Navbar = () => {
                   Admin
                 </Link>
               )}
+
+              {/* Wishlist */}
+              <Link
+                to="/wishlist"
+                className="relative p-2 text-gray-700 hover:text-black transition-colors duration-200"
+                aria-label="Wishlist"
+              >
+                <HiOutlineHeart className="w-6 h-6" />
+                {wishlistItems && wishlistItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </Link>
 
               {/* Cart */}
               <button

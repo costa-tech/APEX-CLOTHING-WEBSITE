@@ -67,6 +67,8 @@ const initialState = {
   items: [],
   totalQuantity: 0,
   totalAmount: 0,
+  total: 0, // Alias for totalAmount for backward compatibility
+  itemCount: 0, // Alias for totalQuantity
   isOpen: false,
   isLoading: false,
   error: null,
@@ -78,7 +80,16 @@ const cartSlice = createSlice({
   reducers: {
     // Local cart operations (for guest users or immediate UI updates)
     addToCart: (state, action) => {
-      const { product, size, quantity = 1, color = 'Default' } = action.payload;
+      // Handle both formats: { product, size, quantity } OR { id, name, price, image, size, quantity }
+      const payload = action.payload;
+      const product = payload.product || payload; // Support both wrapped and direct product data
+      const size = payload.size || 'M';
+      const quantity = payload.quantity || 1;
+      const color = payload.color || 'Default';
+      
+      // Get product image (handle both image and images array)
+      const productImage = product.image || product.images?.[0] || 'https://via.placeholder.com/400';
+      
       const existingItem = state.items.find(
         item => item.id === product.id && item.size === size && item.color === color
       );
@@ -90,8 +101,8 @@ const cartSlice = createSlice({
         state.items.push({
           id: product.id,
           name: product.name,
-          price: product.price,
-          image: product.images[0],
+          price: product.salePrice || product.price,
+          image: productImage,
           size,
           color,
           quantity,
@@ -149,6 +160,9 @@ const cartSlice = createSlice({
         (total, item) => total + item.price * item.quantity,
         0
       );
+      // Update aliases for backward compatibility
+      state.total = state.totalAmount;
+      state.itemCount = state.totalQuantity;
     },
 
     clearError: (state) => {
@@ -161,21 +175,27 @@ const cartSlice = createSlice({
       .addCase(fetchCart.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })
-      .addCase(fetchCart.fulfilled, (state, action) => {
+      })      .addCase(fetchCart.fulfilled, (state, action) => {
         state.isLoading = false;
+        console.log('Fetch cart response:', action.payload);
+        
         if (action.payload && action.payload.items) {
           state.items = action.payload.items.map(item => ({
             id: item.product._id,
             name: item.product.name,
             price: item.price,
-            image: item.product.images[0],
+            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
             size: item.size,
             color: item.color,
             quantity: item.quantity,
             _id: item._id, // Backend item ID for updates/deletion
           }));
           cartSlice.caseReducers.calculateTotals(state);
+        } else {
+          // Handle empty cart or different response structure
+          state.items = [];
+          state.totalQuantity = 0;
+          state.totalAmount = 0;
         }
       })
       .addCase(fetchCart.rejected, (state, action) => {
@@ -186,15 +206,16 @@ const cartSlice = createSlice({
       .addCase(addToCartAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })
-      .addCase(addToCartAsync.fulfilled, (state, action) => {
+      })      .addCase(addToCartAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (action.payload && action.payload.items) {
-          state.items = action.payload.items.map(item => ({
+        console.log('Add to cart response:', action.payload);
+        
+        if (action.payload && action.payload.cart && action.payload.cart.items) {
+          state.items = action.payload.cart.items.map(item => ({
             id: item.product._id,
             name: item.product.name,
             price: item.price,
-            image: item.product.images[0],
+            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
             size: item.size,
             color: item.color,
             quantity: item.quantity,
@@ -202,6 +223,9 @@ const cartSlice = createSlice({
           }));
           cartSlice.caseReducers.calculateTotals(state);
           toast.success('Item added to cart');
+        } else {
+          console.error('Unexpected cart response structure:', action.payload);
+          toast.error('Added to cart but failed to update display');
         }
       })
       .addCase(addToCartAsync.rejected, (state, action) => {

@@ -14,32 +14,36 @@ import AdminLayout from './components/layout/AdminLayout';
 
 // UI Components
 import SplashScreen from './components/ui/SplashScreen';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
-// Pages
-import Home from './pages/Home';
+// Core Pages (keep eagerly loaded for better UX)
+import Home from './components/pages/Home3D';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Checkout from './pages/Checkout';
-import Profile from './pages/Profile';
-import OrderSuccess from './pages/OrderSuccess';
+import Collections from './pages/Collections';
+import About from './pages/About';
+import Wishlist from './pages/Wishlist';
 
-// Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import AdminSettings from './pages/admin/AdminSettings';
-import OrderDetail from './pages/admin/OrderDetail';
+// Lazy-loaded components
+import {
+  LazyAdminDashboard,
+  LazyAdminProducts,
+  LazyAdminOrders,
+  LazyAdminUsers,
+  LazyAdminAnalytics,
+  LazyAdminSettings,
+  LazyOrderDetail,
+  LazyProfile,
+  LazyCheckout,
+  LazyOrderSuccess,
+  LazyWrapper
+} from './utils/lazyRoutes';
 
 // Protected Route Component
 import ProtectedRoute from './components/ProtectedRoute';
-
-// Development Component
-import ConnectionTest from './components/ConnectionTest';
 
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -48,7 +52,7 @@ function AppContent() {
   const location = useLocation();
   const { user, isAuthenticated } = useSelector(state => state.auth);
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const [showSplash, setShowSplash] = useState(true);
+  // const [showSplash, setShowSplash] = useState(true); // DISABLED - causing React errors
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -66,56 +70,74 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Handle splash screen completion
-  const handleSplashComplete = () => {
-    setShowSplash(false);
-  };
+  // // Handle splash screen completion
+  // const handleSplashComplete = () => {
+  //   setShowSplash(false);
+  // };
 
-  // Show splash screen first
-  if (showSplash) {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
+  // // Show splash screen first
+  // if (showSplash) {
+  //   return <SplashScreen onComplete={handleSplashComplete} />;
+  // }
 
   if (isAdminRoute) {
     return (
-      <AdminLayout>
-        <Routes>
-          {/* Admin Routes */}
+      <AdminLayout>        <Routes>
+          {/* Admin Routes - Lazy Loaded */}
           <Route path="/admin" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminDashboard />
+              <LazyWrapper>
+                <LazyAdminDashboard />
+              </LazyWrapper>
             </ProtectedRoute>
           } />
           <Route path="/admin/dashboard" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminDashboard />
+              <LazyWrapper>
+                <LazyAdminDashboard />
+              </LazyWrapper>
             </ProtectedRoute>
           } />
           <Route path="/admin/products" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminProducts />
+              <LazyWrapper>
+                <LazyAdminProducts />
+              </LazyWrapper>
             </ProtectedRoute>
-          } />          <Route path="/admin/orders" element={
+          } />
+          <Route path="/admin/orders" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminOrders />
+              <LazyWrapper>
+                <LazyAdminOrders />
+              </LazyWrapper>
             </ProtectedRoute>
           } />
           <Route path="/admin/orders/:id" element={
             <ProtectedRoute adminOnly={true}>
-              <OrderDetail />
+              <LazyWrapper>
+                <LazyOrderDetail />
+              </LazyWrapper>
             </ProtectedRoute>
-          } />          <Route path="/admin/users" element={
+          } />
+          <Route path="/admin/users" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminUsers />
+              <LazyWrapper>
+                <LazyAdminUsers />
+              </LazyWrapper>
             </ProtectedRoute>
-          } />          <Route path="/admin/analytics" element={
+          } />
+          <Route path="/admin/analytics" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminAnalytics />
+              <LazyWrapper>
+                <LazyAdminAnalytics />
+              </LazyWrapper>
             </ProtectedRoute>
           } />
           <Route path="/admin/settings" element={
             <ProtectedRoute adminOnly={true}>
-              <AdminSettings />
+              <LazyWrapper>
+                <LazyAdminSettings />
+              </LazyWrapper>
             </ProtectedRoute>
           } />
         </Routes>
@@ -139,36 +161,43 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow">
-        <Routes>          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Development Route */}
-          <Route path="/test-connection" element={<ConnectionTest />} />
-          
-          {/* Protected Routes */}
-          <Route path="/checkout" element={
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-          <Route path="/order-success" element={
-            <ProtectedRoute>
-              <OrderSuccess />
-            </ProtectedRoute>
-          } />
-        </Routes>
+      <Navbar />      <main className="flex-grow">
+        <ErrorBoundary>          <Routes>          {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/collections/:category" element={<Collections />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Protected Routes - Lazy Loaded */}
+            <Route path="/checkout" element={
+              <ProtectedRoute>
+                <LazyWrapper>
+                  <LazyCheckout />
+                </LazyWrapper>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <LazyWrapper>
+                  <LazyProfile />
+                </LazyWrapper>
+              </ProtectedRoute>
+            } />
+            <Route path="/order-success" element={
+              <ProtectedRoute>
+                <LazyWrapper>
+                  <LazyOrderSuccess />
+                </LazyWrapper>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </ErrorBoundary>
       </main>
       <Footer />
       

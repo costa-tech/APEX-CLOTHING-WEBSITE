@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 const Cart = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { items, total, itemCount, loading } = useSelector(state => state.cart);
+  const { items = [], total = 0, itemCount = 0, loading } = useSelector(state => state.cart);
   const { user } = useSelector(state => state.auth);
 
   useEffect(() => {

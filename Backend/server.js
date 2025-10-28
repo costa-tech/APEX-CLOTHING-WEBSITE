@@ -1,218 +1,130 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const morgan = require('morgan');
+const compression = require('compression');
+const dotenv = require('dotenv');
+const rateLimit = require('express-rate-limit');
 
+// Load environment variables
+dotenv.config();
+
+// Import Firebase Admin
+const admin = require('./config/firebase');
+
+// Import routes
+const productRoutes = require('./routes/productRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+
+// Import middleware
+const errorHandler = require('./middleware/errorHandler');
+const notFoundHandler = require('./middleware/notFoundHandler');
+
+// Initialize Express app
 const app = express();
 
-console.log('🚀 Starting Clothing E-commerce Backend Server...');
+// Trust proxy for rate limiting behind reverse proxy
+app.set('trust proxy', 1);
 
-// Security and CORS middleware
-app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-}));
-
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
-  next();
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Health check endpoints
+// Apply rate limiting to all routes
+app.use('/api/', limiter);
+
+// Middleware
+app.use(helmet()); // Security headers
+app.use(compression()); // Compress responses
+app.use(morgan('combined')); // Logging
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:3001',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-encoded bodies
+
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
-    success: true,
-    message: 'Clothing E-commerce API is running',
+    status: 'success',
+    message: 'Server is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    uptime: process.uptime(),
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Clothing E-commerce API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+// API Routes
+const API_PREFIX = process.env.API_PREFIX || '/api';
+const API_VERSION = process.env.API_VERSION || 'v1';
+const BASE_PATH = `${API_PREFIX}/${API_VERSION}`;
 
-// Root endpoint
+app.use(`${BASE_PATH}/auth`, authRoutes);
+app.use(`${BASE_PATH}/products`, productRoutes);
+app.use(`${BASE_PATH}/orders`, orderRoutes);
+app.use(`${BASE_PATH}/users`, userRoutes);
+app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
+
+// Welcome route
 app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Welcome to Clothing E-commerce API',
+  res.json({
+    message: 'Welcome to Clothing Brand API',
     version: '1.0.0',
-    documentation: {
+    endpoints: {
       health: '/health',
-      endpoints: {
-        auth: '/api/auth',
-        products: '/api/products',
-        cart: '/api/cart',
-        orders: '/api/orders',
-        analytics: '/api/admin/analytics'
-      }
-    }
+      auth: `${BASE_PATH}/auth`,
+      products: `${BASE_PATH}/products`,
+      orders: `${BASE_PATH}/orders`,
+      users: `${BASE_PATH}/users`,
+      analytics: `${BASE_PATH}/analytics`,
+    },
   });
 });
 
-// Load API routes
-console.log('📋 Loading API routes...');
+// Error handling middleware
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-try {
-  // Auth routes
-  const authRoutes = require('./routes/authRoutes');
-  app.use('/api/auth', authRoutes);
-  console.log('✅ Auth routes loaded');
-
-  // Product routes  
-  const productRoutes = require('./routes/productRoutes');
-  app.use('/api/products', productRoutes);
-  console.log('✅ Product routes loaded');
-
-  // Cart routes
-  const cartRoutes = require('./routes/cartRoutes');
-  app.use('/api/cart', cartRoutes);
-  console.log('✅ Cart routes loaded');
-
-  // Order routes
-  const orderRoutes = require('./routes/orderRoutes');
-  app.use('/api/orders', orderRoutes);
-  console.log('✅ Order routes loaded');
-  // Analytics routes
-  const analyticsRoutes = require('./routes/analyticsRoutes');
-  app.use('/api/admin/analytics', analyticsRoutes);
-  console.log('✅ Analytics routes loaded');
-
-  // Wishlist routes
-  const wishlistRoutes = require('./routes/wishlistRoutes');
-  app.use('/api/wishlist', wishlistRoutes);
-  console.log('✅ Wishlist routes loaded');
-
-  console.log('🎉 All routes loaded successfully!');
-} catch (error) {
-  console.error('❌ Error loading routes:', error);
-  process.exit(1);
-}
-
-// 404 handler for unknown routes
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'API endpoint not found',
-    path: req.originalUrl,
-    available_endpoints: [
-      '/health',
-      '/api/health',
-      '/api/auth/*',
-      '/api/products/*', 
-      '/api/cart/*',
-      '/api/orders/*',
-      '/api/admin/analytics/*'
-    ]
-  });
-});
-
-// Global error handling middleware
-app.use((err, req, res, next) => {
-  console.error('🔥 Global Error:', err);
-
-  let error = {
-    success: false,
-    message: err.message || 'Internal Server Error'
-  };
-
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    error.message = Object.values(err.errors).map(val => val.message).join(', ');
-    return res.status(400).json(error);
-  }
-
-  // Mongoose cast error (invalid ObjectId)
-  if (err.name === 'CastError') {
-    error.message = 'Invalid ID format';
-    return res.status(400).json(error);
-  }
-
-  // Mongoose duplicate key error
-  if (err.code === 11000) {
-    error.message = 'Duplicate field value entered';
-    return res.status(400).json(error);
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    error.message = 'Invalid token';
-    return res.status(401).json(error);
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    error.message = 'Token expired';
-    return res.status(401).json(error);
-  }
-
-  // Default to 500 server error
-  const statusCode = err.statusCode || 500;
-  if (process.env.NODE_ENV === 'development') {
-    error.stack = err.stack;
-  }
-
-  res.status(statusCode).json(error);
-});
-
+// Start server
 const PORT = process.env.PORT || 5000;
-
-console.log(`🔥 Starting server on port ${PORT}...`);
-
-const server = app.listen(PORT, () => {
-  console.log(`✅ Server running successfully on port ${PORT}`);
-  console.log(`🌐 Local: http://localhost:${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log('🎉 Ready to handle requests!');
-  
-  // Connect to database after server starts
-  console.log('🗄️ Connecting to database...');
-  const connectDB = require('./config/database');
-  connectDB();
+app.listen(PORT, () => {
+  console.log(`
+  ╔════════════════════════════════════════════════╗
+  ║   🚀 Clothing Brand API Server                ║
+  ║                                                ║
+  ║   Server running on port: ${PORT}               ║
+  ║   Environment: ${process.env.NODE_ENV || 'development'}              ║
+  ║   API Base URL: http://localhost:${PORT}${BASE_PATH}  ║
+  ║                                                ║
+  ║   📚 API Documentation:                        ║
+  ║   http://localhost:${PORT}                      ║
+  ╚════════════════════════════════════════════════╝
+  `);
 });
 
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
-
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.log('❌ Unhandled Rejection:', err.message);
-  server.close(() => {
-    process.exit(1);
-  });
+  console.error('❌ Unhandled Rejection:', err);
+  // Close server & exit process
+  process.exit(1);
 });
 
+// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.log('❌ Uncaught Exception:', err.message);
+  console.error('❌ Uncaught Exception:', err);
+  // Close server & exit process
   process.exit(1);
 });
 

@@ -1,39 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const {
-  registerUser,
-  loginUser,
-  getMe,
-  updateProfile,
-  changePassword
-} = require('../controllers/authController');
-const auth = require('../middleware/auth');
-const { validateRegister, validateLogin } = require('../middleware/validation');
-const { authLimiter } = require('../middleware/rateLimiter');
+const { body } = require('express-validator');
+const authController = require('../controllers/authController');
+const { verifyToken } = require('../middleware/authMiddleware');
+const validate = require('../middleware/validationMiddleware');
 
-// @route   POST /api/auth/register
-// @desc    Register user
-// @access  Public
-router.post('/register', authLimiter, validateRegister, registerUser);
+// Validation rules
+const registerValidation = [
+  body('email').isEmail().withMessage('Invalid email format'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('name').trim().notEmpty().withMessage('Name is required'),
+];
 
-// @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
-router.post('/login', authLimiter, validateLogin, loginUser);
+const loginValidation = [
+  body('email').isEmail().withMessage('Invalid email format'),
+  body('password').notEmpty().withMessage('Password is required'),
+];
 
-// @route   GET /api/auth/me
-// @desc    Get current user
-// @access  Private
-router.get('/me', auth, getMe);
-
-// @route   PUT /api/auth/profile
-// @desc    Update user profile
-// @access  Private
-router.put('/profile', auth, updateProfile);
-
-// @route   PUT /api/auth/change-password
-// @desc    Change password
-// @access  Private
-router.put('/change-password', auth, changePassword);
+// Auth routes
+router.post('/register', registerValidation, validate, authController.register);
+router.post('/login', loginValidation, validate, authController.login);
+router.post('/logout', verifyToken, authController.logout);
+router.post('/refresh-token', authController.refreshToken);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+router.get('/verify-email', authController.verifyEmail);
+router.post('/resend-verification', authController.resendVerification);
 
 module.exports = router;

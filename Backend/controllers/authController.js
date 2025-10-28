@@ -1,214 +1,348 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const { auth, db } = require('../config/firebase');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
+const usersCollection = db.collection('users');
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-const registerUser = async (req, res) => {
+/**
+ * Register new user
+ */
+exports.register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { email, password, name } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email'
-      });
-    }
-
-    // Create user
-    const user = await User.create({
-      firstName,
-      lastName,
+    // Create user in Firebase Auth
+    const userRecord = await auth.createUser({
       email,
-      password
+      password,
+      displayName: name,
+      emailVerified: false,
     });
 
-    const token = generateToken(user._id);
+    // Create user document in Firestore
+    const userData = {
+      email,
+      name,
+      role: 'customer',
+      status: 'Active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      joinDate: new Date().toISOString(),
+    };
+
+    await usersCollection.doc(userRecord.uid).set(userData);
+
+    // Generate custom token
+    const customToken = await auth.createCustomToken(userRecord.uid);
 
     res.status(201).json({
-      success: true,
+      status: 'success',
       message: 'User registered successfully',
-      token,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role
-      }
+      data: {
+        uid: userRecord.uid,
+        email: userRecord.email,
+        name,
+        customToken,
+      },
     });
   } catch (error) {
     console.error('Register error:', error);
+    
+    if (error.code === 'auth/email-already-exists') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email already exists',
+      });
+    }
+
     res.status(500).json({
-      success: false,
-      message: 'Server error during registration'
+      status: 'error',
+      message: 'Failed to register user',
     });
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-const loginUser = async (req, res) => {
+/**
+ * Login user
+ */
+exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email } = req.body;
 
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
+    // Get user by email
+    const userRecord = await auth.getUserByEmail(email);
+
+    // Check if user exists in Firestore
+    const userDoc = await usersCollection.doc(userRecord.uid).get();
+
+    if (!userDoc.exists) {
+      // Create user document if it doesn't exist
+      const userData = {
+        email: userRecord.email,
+        name: userRecord.displayName || '',
+        role: 'customer',
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await usersCollection.doc(userRecord.uid).set(userData);
+    }
+
+    const userData = userDoc.exists ? userDoc.data() : {};
+
+    // Check if user is suspended
+    if (userData.status === 'Suspended') {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Your account has been suspended',
       });
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated'
-      });
-    }
-
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
+    // Generate custom token with custom claims
+    const customToken = await auth.createCustomToken(userRecord.uid, {
+      role: userData.role || 'customer',
+    });
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    await usersCollection.doc(userRecord.uid).update({
+      lastLogin: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
-    const token = generateToken(user._id);
-
-    res.json({
-      success: true,
+    res.status(200).json({
+      status: 'success',
       message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        lastLogin: user.lastLogin
-      }
+      data: {
+        uid: userRecord.uid,
+        email: userRecord.email,
+        name: userData.name || userRecord.displayName,
+        role: userData.role || 'customer',
+        customToken,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during login'
-    });
-  }
-};
 
-// @desc    Get current user
-// @route   GET /api/auth/me
-// @access  Private
-const getMe = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    res.json({
-      success: true,
-      user
-    });
-  } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
-
-// @desc    Update user profile
-// @route   PUT /api/auth/profile
-// @access  Private
-const updateProfile = async (req, res) => {
-  try {
-    const { firstName, lastName, phone, address } = req.body;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        firstName,
-        lastName,
-        phone,
-        address
-      },
-      {
-        new: true,
-        runValidators: true
-      }
-    );
-
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      user
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during profile update'
-    });
-  }
-};
-
-// @desc    Change password
-// @route   PUT /api/auth/change-password
-// @access  Private
-const changePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    const user = await User.findById(req.user.id).select('+password');
-
-    // Check current password
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
       });
     }
 
-    // Update password
-    user.password = newPassword;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
-    });
-  } catch (error) {
-    console.error('Change password error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error during password change'
+      status: 'error',
+      message: 'Failed to login',
     });
   }
 };
 
-module.exports = {
-  registerUser,
-  loginUser,
-  getMe,
-  updateProfile,
-  changePassword
+/**
+ * Logout user
+ */
+exports.logout = async (req, res) => {
+  try {
+    // Firebase handles token invalidation on client side
+    // Server doesn't maintain sessions
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Logout successful',
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to logout',
+    });
+  }
+};
+
+/**
+ * Refresh token
+ */
+exports.refreshToken = async (req, res) => {
+  try {
+    const { uid } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'User ID is required',
+      });
+    }
+
+    // Get user data
+    const userDoc = await usersCollection.doc(uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+      });
+    }
+
+    const userData = userDoc.data();
+
+    // Generate new custom token
+    const customToken = await auth.createCustomToken(uid, {
+      role: userData.role || 'customer',
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        customToken,
+      },
+    });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to refresh token',
+    });
+  }
+};
+
+/**
+ * Forgot password
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Generate password reset link
+    const resetLink = await auth.generatePasswordResetLink(email);
+
+    // In production, send email with reset link
+    console.log('Password reset link:', resetLink);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset email sent',
+      // Remove this in production
+      data: { resetLink },
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+
+    if (error.code === 'auth/user-not-found') {
+      // Don't reveal if user exists
+      return res.status(200).json({
+        status: 'success',
+        message: 'If an account exists, a password reset email has been sent',
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to process password reset',
+    });
+  }
+};
+
+/**
+ * Reset password
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const { oobCode, newPassword } = req.body;
+
+    if (!oobCode || !newPassword) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Reset code and new password are required',
+      });
+    }
+
+    // Verify password reset code
+    await auth.verifyPasswordResetCode(oobCode);
+
+    // Reset password
+    await auth.confirmPasswordReset(oobCode, newPassword);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset successful',
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+
+    if (error.code === 'auth/invalid-action-code') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid or expired reset code',
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to reset password',
+    });
+  }
+};
+
+/**
+ * Verify email
+ */
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { oobCode } = req.query;
+
+    if (!oobCode) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Verification code is required',
+      });
+    }
+
+    // Apply email verification
+    await auth.applyActionCode(oobCode);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Email verified successfully',
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+
+    if (error.code === 'auth/invalid-action-code') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid or expired verification code',
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to verify email',
+    });
+  }
+};
+
+/**
+ * Resend verification email
+ */
+exports.resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Generate email verification link
+    const verificationLink = await auth.generateEmailVerificationLink(email);
+
+    // In production, send email with verification link
+    console.log('Email verification link:', verificationLink);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification email sent',
+      // Remove this in production
+      data: { verificationLink },
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to resend verification email',
+    });
+  }
 };

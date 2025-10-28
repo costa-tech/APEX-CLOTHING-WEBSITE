@@ -1,330 +1,428 @@
-const Order = require('../models/Order');
-const Product = require('../models/Product');
-const User = require('../models/User');
+const { db } = require('../config/firebase');
 
-// @desc    Get dashboard analytics
-// @route   GET /api/admin/analytics/dashboard
-// @access  Private/Admin
-const getDashboardAnalytics = async (req, res) => {
+const ordersCollection = db.collection('orders');
+const productsCollection = db.collection('products');
+const usersCollection = db.collection('users');
+
+/**
+ * Get dashboard statistics
+ */
+exports.getDashboardStats = async (req, res) => {
   try {
-    const currentDate = new Date();
-    const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+    // Get total orders and revenue
+    const ordersSnapshot = await ordersCollection.get();
+    let totalRevenue = 0;
+    let totalOrders = ordersSnapshot.size;
+    let pendingOrders = 0;
+    let completedOrders = 0;
 
-    // Total orders and revenue
-    const totalOrders = await Order.countDocuments({ status: { $ne: 'cancelled' } });
-    const totalRevenue = await Order.aggregate([
-      { $match: { status: { $ne: 'cancelled' }, 'payment.status': 'paid' } },
-      { $group: { _id: null, total: { $sum: '$total' } } }
-    ]);
-
-    // This month stats
-    const thisMonthOrders = await Order.countDocuments({
-      createdAt: { $gte: currentMonth },
-      status: { $ne: 'cancelled' }
+    ordersSnapshot.forEach(doc => {
+      const data = doc.data();
+      totalRevenue += data.total || 0;
+      if (data.status === 'Pending') pendingOrders++;
+      if (data.status === 'Completed') completedOrders++;
     });
 
-    const thisMonthRevenue = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: currentMonth },
-          status: { $ne: 'cancelled' },
-          'payment.status': 'paid'
-        }
-      },
-      { $group: { _id: null, total: { $sum: '$total' } } }
-    ]);
+    // Get total products
+    const productsSnapshot = await productsCollection.get();
+    const totalProducts = productsSnapshot.size;
+    let lowStockProducts = 0;
 
-    // Last month stats for comparison
-    const lastMonthOrders = await Order.countDocuments({
-      createdAt: { $gte: lastMonth, $lt: currentMonth },
-      status: { $ne: 'cancelled' }
+    productsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.stock < 10) lowStockProducts++;
     });
 
-    const lastMonthRevenue = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: lastMonth, $lt: currentMonth },
-          status: { $ne: 'cancelled' },
-          'payment.status': 'paid'
-        }
-      },
-      { $group: { _id: null, total: { $sum: '$total' } } }
-    ]);
+    // Get total users
+    const usersSnapshot = await usersCollection.get();
+    const totalUsers = usersSnapshot.size;
+    let activeUsers = 0;
 
-    // Total users
-    const totalUsers = await User.countDocuments({ role: 'user' });
-    const thisMonthUsers = await User.countDocuments({
-      createdAt: { $gte: currentMonth },
-      role: 'user'
+    usersSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'Active') activeUsers++;
     });
 
-    // Total products
-    const totalProducts = await Product.countDocuments({ isActive: true });
-    const lowStockProducts = await Product.countDocuments({
-      isActive: true,
-      totalStock: { $lt: 10 }
+    // Get new users this month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newUsersSnapshot = await usersCollection
+      .where('createdAt', '>=', startOfMonth.toISOString())
+      .get();
+
+    // Get orders this month
+    const ordersThisMonthSnapshot = await ordersCollection
+      .where('orderDate', '>=', startOfMonth.toISOString())
+      .get();
+    
+    let revenueThisMonth = 0;
+    ordersThisMonthSnapshot.forEach(doc => {
+      revenueThisMonth += doc.data().total || 0;
     });
 
-    // Recent orders
-    const recentOrders = await Order.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('user', 'firstName lastName email')
-      .select('orderNumber user total status createdAt');
-
-    // Calculate growth percentages
-    const orderGrowth = lastMonthOrders > 0 
-      ? ((thisMonthOrders - lastMonthOrders) / lastMonthOrders * 100).toFixed(1)
-      : 0;
-
-    const revenueGrowth = lastMonthRevenue[0]?.total > 0
-      ? ((thisMonthRevenue[0]?.total || 0 - lastMonthRevenue[0]?.total) / lastMonthRevenue[0]?.total * 100).toFixed(1)
-      : 0;
-
-    res.json({
-      success: true,
-      analytics: {
+    res.status(200).json({
+      status: 'success',
+      data: {
         overview: {
+          totalRevenue: totalRevenue.toFixed(2),
           totalOrders,
-          totalRevenue: totalRevenue[0]?.total || 0,
-          totalUsers,
           totalProducts,
-          lowStockProducts
+          totalUsers,
         },
-        thisMonth: {
-          orders: thisMonthOrders,
-          revenue: thisMonthRevenue[0]?.total || 0,
-          users: thisMonthUsers,
-          orderGrowth: `${orderGrowth}%`,
-          revenueGrowth: `${revenueGrowth}%`
+        orders: {
+          total: totalOrders,
+          pending: pendingOrders,
+          completed: completedOrders,
+          thisMonth: ordersThisMonthSnapshot.size,
         },
-        recentOrders
+        revenue: {
+          total: totalRevenue.toFixed(2),
+          thisMonth: revenueThisMonth.toFixed(2),
+          averageOrderValue: totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : 0,
+        },
+        products: {
+          total: totalProducts,
+          lowStock: lowStockProducts,
+        },
+        users: {
+          total: totalUsers,
+          active: activeUsers,
+          newThisMonth: newUsersSnapshot.size,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch dashboard statistics',
+    });
+  }
+};
+
+/**
+ * Get revenue statistics
+ */
+exports.getRevenueStats = async (req, res) => {
+  try {
+    const { period = '30days' } = req.query;
+
+    const now = new Date();
+    let startDate;
+
+    switch (period) {
+      case '7days':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30days':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90days':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '365days':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const snapshot = await ordersCollection
+      .where('orderDate', '>=', startDate.toISOString())
+      .orderBy('orderDate', 'asc')
+      .get();
+
+    const dailyRevenue = {};
+    let totalRevenue = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const date = new Date(data.orderDate).toISOString().split('T')[0];
+      
+      if (!dailyRevenue[date]) {
+        dailyRevenue[date] = 0;
       }
+      
+      dailyRevenue[date] += data.total || 0;
+      totalRevenue += data.total || 0;
+    });
+
+    const chartData = Object.entries(dailyRevenue).map(([date, revenue]) => ({
+      date,
+      revenue: parseFloat(revenue.toFixed(2)),
+    }));
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        period,
+        totalRevenue: totalRevenue.toFixed(2),
+        chartData,
+      },
     });
   } catch (error) {
-    console.error('Get dashboard analytics error:', error);
+    console.error('Get revenue stats error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching analytics'
+      status: 'error',
+      message: 'Failed to fetch revenue statistics',
     });
   }
 };
 
-// @desc    Get orders per month
-// @route   GET /api/admin/analytics/orders-monthly
-// @access  Private/Admin
-const getOrdersPerMonth = async (req, res) => {
+/**
+ * Get top selling products
+ */
+exports.getTopSellingProducts = async (req, res) => {
   try {
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const { limit = 10 } = req.query;
 
-    const ordersPerMonth = await Order.aggregate([
-      {
-        $match: {
-          createdAt: {
-            $gte: new Date(year, 0, 1),
-            $lt: new Date(year + 1, 0, 1)
-          },
-          status: { $ne: 'cancelled' }
-        }
-      },
-      {
-        $group: {
-          _id: { $month: '$createdAt' },
-          orders: { $sum: 1 },
-          revenue: { $sum: '$total' }
-        }
-      },
-      { $sort: { '_id': 1 } }
-    ]);
+    const snapshot = await productsCollection
+      .orderBy('sales', 'desc')
+      .limit(parseInt(limit))
+      .get();
 
-    // Fill in missing months with 0
-    const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const monthData = ordersPerMonth.find(item => item._id === i + 1);
-      return {
-        month: i + 1,
-        orders: monthData ? monthData.orders : 0,
-        revenue: monthData ? monthData.revenue : 0
-      };
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({
+        id: doc.id,
+        ...doc.data(),
+      });
     });
 
-    res.json({
-      success: true,
-      data: monthlyData
-    });
-  } catch (error) {
-    console.error('Get orders per month error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching monthly orders'
-    });
-  }
-};
-
-// @desc    Get top selling products
-// @route   GET /api/admin/analytics/top-products
-// @access  Private/Admin
-const getTopSellingProducts = async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-
-    const topProducts = await Product.find({ isActive: true })
-      .sort({ salesCount: -1 })
-      .limit(limit)
-      .select('name salesCount price images totalStock');
-
-    res.json({
-      success: true,
-      products: topProducts
+    res.status(200).json({
+      status: 'success',
+      data: { products },
     });
   } catch (error) {
     console.error('Get top selling products error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching top products'
+      status: 'error',
+      message: 'Failed to fetch top selling products',
     });
   }
 };
 
-// @desc    Get revenue analytics
-// @route   GET /api/admin/analytics/revenue
-// @access  Private/Admin
-const getRevenueAnalytics = async (req, res) => {
+/**
+ * Get low stock products
+ */
+exports.getLowStockProducts = async (req, res) => {
   try {
-    const { period = '7days' } = req.query;
+    const { threshold = 10 } = req.query;
+
+    const snapshot = await productsCollection
+      .where('stock', '<=', parseInt(threshold))
+      .orderBy('stock', 'asc')
+      .get();
+
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { products },
+    });
+  } catch (error) {
+    console.error('Get low stock products error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch low stock products',
+    });
+  }
+};
+
+/**
+ * Get top customers
+ */
+exports.getTopCustomers = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Get all orders
+    const ordersSnapshot = await ordersCollection.get();
     
-    let startDate;
-    let groupBy;
-    
-    switch (period) {
-      case '7days':
-        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        groupBy = {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-          day: { $dayOfMonth: '$createdAt' }
+    const customerStats = {};
+
+    ordersSnapshot.forEach(doc => {
+      const data = doc.data();
+      const userId = data.userId;
+
+      if (!customerStats[userId]) {
+        customerStats[userId] = {
+          totalSpent: 0,
+          orderCount: 0,
         };
-        break;
-      case '30days':
-        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        groupBy = {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-          day: { $dayOfMonth: '$createdAt' }
-        };
-        break;
-      case '12months':
-        startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-        groupBy = {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' }
-        };
-        break;
-      default:
-        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        groupBy = {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-          day: { $dayOfMonth: '$createdAt' }
-        };
+      }
+
+      customerStats[userId].totalSpent += data.total || 0;
+      customerStats[userId].orderCount += 1;
+    });
+
+    // Get customer details
+    const topCustomers = await Promise.all(
+      Object.entries(customerStats)
+        .sort((a, b) => b[1].totalSpent - a[1].totalSpent)
+        .slice(0, parseInt(limit))
+        .map(async ([userId, stats]) => {
+          const userDoc = await usersCollection.doc(userId).get();
+          const userData = userDoc.exists ? userDoc.data() : {};
+
+          return {
+            id: userId,
+            name: userData.name || 'Unknown',
+            email: userData.email || 'N/A',
+            totalSpent: stats.totalSpent.toFixed(2),
+            orderCount: stats.orderCount,
+          };
+        })
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: { customers: topCustomers },
+    });
+  } catch (error) {
+    console.error('Get top customers error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch top customers',
+    });
+  }
+};
+
+/**
+ * Get recent orders
+ */
+exports.getRecentOrders = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const snapshot = await ordersCollection
+      .orderBy('orderDate', 'desc')
+      .limit(parseInt(limit))
+      .get();
+
+    const orders = [];
+    for (const doc of snapshot.docs) {
+      const orderData = doc.data();
+      
+      // Get customer details
+      let customer = {};
+      if (orderData.userId) {
+        const userDoc = await usersCollection.doc(orderData.userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          customer = {
+            name: userData.name,
+            email: userData.email,
+          };
+        }
+      }
+
+      orders.push({
+        id: doc.id,
+        ...orderData,
+        customer,
+      });
     }
 
-    const revenueData = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startDate },
-          status: { $ne: 'cancelled' },
-          'payment.status': 'paid'
-        }
-      },
-      {
-        $group: {
-          _id: groupBy,
-          revenue: { $sum: '$total' },
-          orders: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id': 1 } }
-    ]);
-
-    res.json({
-      success: true,
-      data: revenueData
+    res.status(200).json({
+      status: 'success',
+      data: { orders },
     });
   } catch (error) {
-    console.error('Get revenue analytics error:', error);
+    console.error('Get recent orders error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching revenue analytics'
+      status: 'error',
+      message: 'Failed to fetch recent orders',
     });
   }
 };
 
-// @desc    Get inventory analytics
-// @route   GET /api/admin/analytics/inventory
-// @access  Private/Admin
-const getInventoryAnalytics = async (req, res) => {
+/**
+ * Get trends
+ */
+exports.getTrends = async (req, res) => {
   try {
-    // Low stock products (less than 10 items)
-    const lowStockProducts = await Product.find({
-      isActive: true,
-      totalStock: { $lt: 10, $gt: 0 }
-    }).select('name totalStock sku');
+    const now = new Date();
+    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const previousMonth = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-    // Out of stock products
-    const outOfStockProducts = await Product.find({
-      isActive: true,
-      totalStock: 0
-    }).select('name sku');
+    // Get current month data
+    const currentMonthOrders = await ordersCollection
+      .where('orderDate', '>=', lastMonth.toISOString())
+      .get();
 
-    // Total products by category
-    const productsByCategory = await Product.aggregate([
-      { $match: { isActive: true } },
-      {
-        $group: {
-          _id: '$category',
-          count: { $sum: 1 },
-          totalStock: { $sum: '$totalStock' }
-        }
-      }
-    ]);
+    // Get previous month data
+    const previousMonthOrders = await ordersCollection
+      .where('orderDate', '>=', previousMonth.toISOString())
+      .where('orderDate', '<', lastMonth.toISOString())
+      .get();
 
-    // Total inventory value
-    const inventoryValue = await Product.aggregate([
-      { $match: { isActive: true } },
-      {
-        $group: {
-          _id: null,
-          totalValue: { $sum: { $multiply: ['$price', '$totalStock'] } }
-        }
-      }
-    ]);
+    let currentRevenue = 0;
+    currentMonthOrders.forEach(doc => {
+      currentRevenue += doc.data().total || 0;
+    });
 
-    res.json({
-      success: true,
-      inventory: {
-        lowStockProducts,
-        outOfStockProducts,
-        productsByCategory,
-        totalInventoryValue: inventoryValue[0]?.totalValue || 0,
-        lowStockCount: lowStockProducts.length,
-        outOfStockCount: outOfStockProducts.length
-      }
+    let previousRevenue = 0;
+    previousMonthOrders.forEach(doc => {
+      previousRevenue += doc.data().total || 0;
+    });
+
+    const revenueTrend = previousRevenue > 0
+      ? ((currentRevenue - previousRevenue) / previousRevenue * 100).toFixed(2)
+      : 100;
+
+    const ordersTrend = previousMonthOrders.size > 0
+      ? ((currentMonthOrders.size - previousMonthOrders.size) / previousMonthOrders.size * 100).toFixed(2)
+      : 100;
+
+    // Get new users trend
+    const currentMonthUsers = await usersCollection
+      .where('createdAt', '>=', lastMonth.toISOString())
+      .get();
+
+    const previousMonthUsers = await usersCollection
+      .where('createdAt', '>=', previousMonth.toISOString())
+      .where('createdAt', '<', lastMonth.toISOString())
+      .get();
+
+    const usersTrend = previousMonthUsers.size > 0
+      ? ((currentMonthUsers.size - previousMonthUsers.size) / previousMonthUsers.size * 100).toFixed(2)
+      : 100;
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        revenue: {
+          current: currentRevenue.toFixed(2),
+          previous: previousRevenue.toFixed(2),
+          trend: parseFloat(revenueTrend),
+          direction: revenueTrend >= 0 ? 'up' : 'down',
+        },
+        orders: {
+          current: currentMonthOrders.size,
+          previous: previousMonthOrders.size,
+          trend: parseFloat(ordersTrend),
+          direction: ordersTrend >= 0 ? 'up' : 'down',
+        },
+        users: {
+          current: currentMonthUsers.size,
+          previous: previousMonthUsers.size,
+          trend: parseFloat(usersTrend),
+          direction: usersTrend >= 0 ? 'up' : 'down',
+        },
+      },
     });
   } catch (error) {
-    console.error('Get inventory analytics error:', error);
+    console.error('Get trends error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching inventory analytics'
+      status: 'error',
+      message: 'Failed to fetch trends',
     });
   }
-};
-
-module.exports = {
-  getDashboardAnalytics,
-  getOrdersPerMonth,
-  getTopSellingProducts,
-  getRevenueAnalytics,
-  getInventoryAnalytics
 };

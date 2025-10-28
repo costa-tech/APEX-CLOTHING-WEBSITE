@@ -6,7 +6,7 @@ import { toggleCart, fetchCart, updateCartItemAsync, removeFromCartAsync } from 
 
 const MobileCart = () => {
   const dispatch = useDispatch();
-  const { items, total, itemCount, isOpen } = useSelector(state => state.cart);
+  const { items = [], total = 0, itemCount = 0, isOpen } = useSelector(state => state.cart);
   const { user } = useSelector(state => state.auth);
 
   useEffect(() => {

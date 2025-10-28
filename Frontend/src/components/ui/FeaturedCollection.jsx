@@ -1,5 +1,5 @@
 import React from 'react';
-import ProductCard from './ProductCard';
+import ProductCard3D from './ProductCard3D';
 
 const FeaturedCollection = ({ products = [] }) => {
   // Mock featured products if none provided
@@ -72,7 +72,7 @@ const FeaturedCollection = ({ products = [] }) => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {displayProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard3D key={product.id} product={product} />
           ))}
         </div>
       </div>

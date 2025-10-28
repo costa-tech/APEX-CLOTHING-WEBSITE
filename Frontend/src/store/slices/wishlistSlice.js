@@ -88,18 +88,22 @@ const wishlistSlice = createSlice({
       .addCase(fetchWishlist.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })
-      .addCase(fetchWishlist.fulfilled, (state, action) => {
+      })      .addCase(fetchWishlist.fulfilled, (state, action) => {
         state.isLoading = false;
+        console.log('Fetch wishlist response:', action.payload);
+        
         if (action.payload && action.payload.items) {
           state.items = action.payload.items.map(item => ({
             id: item.product._id,
             name: item.product.name,
             price: item.product.price,
-            image: item.product.images[0],
+            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
             originalPrice: item.product.originalPrice,
             onSale: item.product.onSale,
           }));
+        } else {
+          // Handle empty wishlist
+          state.items = [];
         }
       })
       .addCase(fetchWishlist.rejected, (state, action) => {
@@ -110,19 +114,23 @@ const wishlistSlice = createSlice({
       .addCase(addToWishlistAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })
-      .addCase(addToWishlistAsync.fulfilled, (state, action) => {
+      })      .addCase(addToWishlistAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        if (action.payload && action.payload.items) {
-          state.items = action.payload.items.map(item => ({
+        console.log('Add to wishlist response:', action.payload);
+        
+        if (action.payload && action.payload.wishlist && action.payload.wishlist.items) {
+          state.items = action.payload.wishlist.items.map(item => ({
             id: item.product._id,
             name: item.product.name,
             price: item.product.price,
-            image: item.product.images[0],
+            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
             originalPrice: item.product.originalPrice,
             onSale: item.product.onSale,
           }));
           toast.success('Item added to wishlist');
+        } else {
+          console.error('Unexpected wishlist response structure:', action.payload);
+          toast.error('Added to wishlist but failed to update display');
         }
       })
       .addCase(addToWishlistAsync.rejected, (state, action) => {

@@ -13,7 +13,7 @@ export const getWishlist = async () => {
 // Add item to wishlist
 export const addToWishlist = async (productId) => {
   try {
-    const response = await api.post('/wishlist/add', { productId });
+    const response = await api.post('/wishlist', { product_id: productId });
     return response;
   } catch (error) {
     throw error;
@@ -21,9 +21,9 @@ export const addToWishlist = async (productId) => {
 };
 
 // Remove item from wishlist
-export const removeFromWishlist = async (productId) => {
+export const removeFromWishlist = async (itemId) => {
   try {
-    const response = await api.delete(`/wishlist/remove/${productId}`);
+    const response = await api.delete(`/wishlist/${itemId}`);
     return response;
   } catch (error) {
     throw error;
@@ -33,7 +33,7 @@ export const removeFromWishlist = async (productId) => {
 // Clear entire wishlist
 export const clearWishlist = async () => {
   try {
-    const response = await api.delete('/wishlist/clear');
+    const response = await api.delete('/wishlist');
     return response;
   } catch (error) {
     throw error;

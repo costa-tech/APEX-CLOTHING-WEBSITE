@@ -1,291 +1,454 @@
-const Product = require('../models/Product');
+const { db, storage } = require('../config/firebase');
 
-// @desc    Get all products
-// @route   GET /api/products
-// @access  Public
-const getProducts = async (req, res) => {
+const productsCollection = db.collection('products');
+
+/**
+ * Get all products with optional filters
+ */
+exports.getAllProducts = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12;
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 20,
+      category,
+      status,
+      sortBy = 'createdAt',
+      order = 'desc',
+      minPrice,
+      maxPrice,
+    } = req.query;
 
-    // Build filter object
-    let filter = { isActive: true };
+    let query = productsCollection;
 
-    // Category filter
-    if (req.query.category) {
-      filter.category = req.query.category;
+    // Apply filters
+    if (category) {
+      query = query.where('category', '==', category);
     }
 
-    // Subcategory filter
-    if (req.query.subcategory) {
-      filter.subcategory = req.query.subcategory;
+    if (status) {
+      query = query.where('status', '==', status);
     }
 
-    // Price range filter
-    if (req.query.minPrice || req.query.maxPrice) {
-      filter.price = {};
-      if (req.query.minPrice) filter.price.$gte = parseFloat(req.query.minPrice);
-      if (req.query.maxPrice) filter.price.$lte = parseFloat(req.query.maxPrice);
+    if (minPrice) {
+      query = query.where('price', '>=', parseFloat(minPrice));
     }
 
-    // Size filter
-    if (req.query.size) {
-      filter['sizes.size'] = req.query.size;
+    if (maxPrice) {
+      query = query.where('price', '<=', parseFloat(maxPrice));
     }
 
-    // Color filter
-    if (req.query.color) {
-      filter['colors.name'] = { $regex: req.query.color, $options: 'i' };
-    }
+    // Apply sorting
+    query = query.orderBy(sortBy, order);
 
-    // Search filter
-    if (req.query.search) {
-      filter.$text = { $search: req.query.search };
-    }
+    // Apply pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    query = query.limit(parseInt(limit)).offset(skip);
 
-    // Build sort object
-    let sort = {};
-    switch (req.query.sort) {
-      case 'price_asc':
-        sort.price = 1;
-        break;
-      case 'price_desc':
-        sort.price = -1;
-        break;
-      case 'rating':
-        sort['rating.average'] = -1;
-        break;
-      case 'popular':
-        sort.salesCount = -1;
-        break;
-      case 'newest':
-        sort.createdAt = -1;
-        break;
-      default:
-        sort.createdAt = -1;
-    }
+    const snapshot = await query.get();
+    
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
 
-    const products = await Product.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .select('-__v');
+    // Get total count
+    const totalSnapshot = await productsCollection.get();
+    const total = totalSnapshot.size;
 
-    const total = await Product.countDocuments(filter);
-
-    res.json({
-      success: true,
-      products,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+    res.status(200).json({
+      status: 'success',
+      data: {
+        products,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+      },
     });
   } catch (error) {
-    console.error('Get products error:', error);
+    console.error('Get all products error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching products'
+      status: 'error',
+      message: 'Failed to fetch products',
     });
   }
 };
 
-// @desc    Get single product
-// @route   GET /api/products/:id
-// @access  Public
-const getProduct = async (req, res) => {
+/**
+ * Get product by ID
+ */
+exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
 
-    if (!product || !product.isActive) {
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
       return res.status(404).json({
-        success: false,
-        message: 'Product not found'
+        status: 'error',
+        message: 'Product not found',
       });
     }
 
-    res.json({
-      success: true,
-      product
+    res.status(200).json({
+      status: 'success',
+      data: {
+        id: doc.id,
+        ...doc.data(),
+      },
     });
   } catch (error) {
-    console.error('Get product error:', error);
+    console.error('Get product by ID error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching product'
+      status: 'error',
+      message: 'Failed to fetch product',
     });
   }
 };
 
-// @desc    Create product (Admin only)
-// @route   POST /api/products
-// @access  Private/Admin
-const createProduct = async (req, res) => {
+/**
+ * Get products by category
+ */
+exports.getProductsByCategory = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const { category } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const snapshot = await productsCollection
+      .where('category', '==', category)
+      .limit(parseInt(limit))
+      .offset(skip)
+      .get();
+
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { products },
+    });
+  } catch (error) {
+    console.error('Get products by category error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch products',
+    });
+  }
+};
+
+/**
+ * Search products
+ */
+exports.searchProducts = async (req, res) => {
+  try {
+    const { query } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const snapshot = await productsCollection.get();
+    
+    const products = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const searchText = `${data.name} ${data.description} ${data.brand} ${data.tags?.join(' ')}`.toLowerCase();
+      
+      if (searchText.includes(query.toLowerCase())) {
+        products.push({
+          id: doc.id,
+          ...data,
+        });
+      }
+    });
+
+    // Apply pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedProducts = products.slice(skip, skip + parseInt(limit));
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        products: paginatedProducts,
+        total: products.length,
+      },
+    });
+  } catch (error) {
+    console.error('Search products error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to search products',
+    });
+  }
+};
+
+/**
+ * Create new product (Admin only)
+ */
+exports.createProduct = async (req, res) => {
+  try {
+    const productData = {
+      ...req.body,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: req.user.uid,
+      sales: 0,
+      views: 0,
+      images: req.body.images || [],
+    };
+
+    const docRef = await productsCollection.add(productData);
 
     res.status(201).json({
-      success: true,
+      status: 'success',
       message: 'Product created successfully',
-      product
+      data: {
+        id: docRef.id,
+        ...productData,
+      },
     });
   } catch (error) {
     console.error('Create product error:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product with this SKU already exists'
-      });
-    }
-
     res.status(500).json({
-      success: false,
-      message: 'Server error while creating product'
+      status: 'error',
+      message: 'Failed to create product',
     });
   }
 };
 
-// @desc    Update product (Admin only)
-// @route   PUT /api/products/:id
-// @access  Private/Admin
-const updateProduct = async (req, res) => {
+/**
+ * Update product (Admin only)
+ */
+exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    const { id } = req.params;
 
-    if (!product) {
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
       return res.status(404).json({
-        success: false,
-        message: 'Product not found'
+        status: 'error',
+        message: 'Product not found',
       });
     }
 
-    res.json({
-      success: true,
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user.uid,
+    };
+
+    await productsCollection.doc(id).update(updateData);
+
+    const updatedDoc = await productsCollection.doc(id).get();
+
+    res.status(200).json({
+      status: 'success',
       message: 'Product updated successfully',
-      product
+      data: {
+        id: updatedDoc.id,
+        ...updatedDoc.data(),
+      },
     });
   } catch (error) {
     console.error('Update product error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while updating product'
+      status: 'error',
+      message: 'Failed to update product',
     });
   }
 };
 
-// @desc    Delete product (Admin only)
-// @route   DELETE /api/products/:id
-// @access  Private/Admin
-const deleteProduct = async (req, res) => {
+/**
+ * Delete product (Admin only)
+ */
+exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
 
-    if (!product) {
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
       return res.status(404).json({
-        success: false,
-        message: 'Product not found'
+        status: 'error',
+        message: 'Product not found',
       });
     }
 
-    // Soft delete - just mark as inactive
-    product.isActive = false;
-    await product.save();
+    await productsCollection.doc(id).delete();
 
-    res.json({
-      success: true,
-      message: 'Product deleted successfully'
+    res.status(200).json({
+      status: 'success',
+      message: 'Product deleted successfully',
     });
   } catch (error) {
     console.error('Delete product error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while deleting product'
+      status: 'error',
+      message: 'Failed to delete product',
     });
   }
 };
 
-// @desc    Get featured products
-// @route   GET /api/products/featured
-// @access  Public
-const getFeaturedProducts = async (req, res) => {
+/**
+ * Update product stock (Admin only)
+ */
+exports.updateStock = async (req, res) => {
   try {
-    const products = await Product.find({ 
-      isActive: true, 
-      isFeatured: true 
-    })
-    .limit(8)
-    .sort({ createdAt: -1 });
+    const { id } = req.params;
+    const { stock } = req.body;
 
-    res.json({
-      success: true,
-      products
-    });
-  } catch (error) {
-    console.error('Get featured products error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching featured products'
-    });
-  }
-};
+    if (stock === undefined || stock < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid stock value',
+      });
+    }
 
-// @desc    Get product categories
-// @route   GET /api/products/categories
-// @access  Public
-const getCategories = async (req, res) => {
-  try {
-    const categories = await Product.aggregate([
-      { $match: { isActive: true } },
-      { 
-        $group: { 
-          _id: { category: '$category', subcategory: '$subcategory' },
-          count: { $sum: 1 }
-        }
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Product not found',
+      });
+    }
+
+    await productsCollection.doc(id).update({
+      stock: parseInt(stock),
+      status: parseInt(stock) === 0 ? 'Out of Stock' : 'Active',
+      updatedAt: new Date().toISOString(),
+    });
+
+    const updatedDoc = await productsCollection.doc(id).get();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Stock updated successfully',
+      data: {
+        id: updatedDoc.id,
+        ...updatedDoc.data(),
       },
-      {
-        $group: {
-          _id: '$_id.category',
-          subcategories: {
-            $push: {
-              name: '$_id.subcategory',
-              count: '$count'
-            }
-          },
-          totalCount: { $sum: '$count' }
-        }
-      }
-    ]);
-
-    res.json({
-      success: true,
-      categories
     });
   } catch (error) {
-    console.error('Get categories error:', error);
+    console.error('Update stock error:', error);
     res.status(500).json({
-      success: false,
-      message: 'Server error while fetching categories'
+      status: 'error',
+      message: 'Failed to update stock',
     });
   }
 };
 
-module.exports = {
-  getProducts,
-  getProduct,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getFeaturedProducts,
-  getCategories
+/**
+ * Upload product images (Admin only)
+ */
+exports.uploadImages = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No files uploaded',
+      });
+    }
+
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Product not found',
+      });
+    }
+
+    const bucket = storage.bucket();
+    const uploadedImages = [];
+
+    for (const file of req.files) {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const fileName = `products/${id}/${timestamp}-${random}-${file.originalname}`;
+      const fileUpload = bucket.file(fileName);
+
+      await fileUpload.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+
+      await fileUpload.makePublic();
+
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      uploadedImages.push(publicUrl);
+    }
+
+    const currentData = doc.data();
+    const updatedImages = [...(currentData.images || []), ...uploadedImages];
+
+    await productsCollection.doc(id).update({
+      images: updatedImages,
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Images uploaded successfully',
+      data: {
+        images: uploadedImages,
+      },
+    });
+  } catch (error) {
+    console.error('Upload images error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to upload images',
+    });
+  }
+};
+
+/**
+ * Delete product image (Admin only)
+ */
+exports.deleteImage = async (req, res) => {
+  try {
+    const { id, imageId } = req.params;
+
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Product not found',
+      });
+    }
+
+    const currentData = doc.data();
+    const updatedImages = (currentData.images || []).filter((img, index) => index !== parseInt(imageId));
+
+    await productsCollection.doc(id).update({
+      images: updatedImages,
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Image deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete image',
+    });
+  }
 };

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import * as authAPI from '../../utils/authAPI';
+import * as authAPI from '../../utils/firebaseAuth';
 import { fetchCart } from './cartSlice';
 import { fetchWishlist } from './wishlistSlice';
 

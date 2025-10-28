@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { fetchProducts, setFilters, clearFilters, setCurrentPage } from '../store/slices/productSlice';
-import ProductCard from '../components/ui/ProductCard';
+import ProductCard3D from '../components/ui/ProductCard3D';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ProductFilters from '../components/ui/ProductFilters';
 import { HiOutlineFilter, HiOutlineX } from 'react-icons/hi';
@@ -11,6 +11,7 @@ const Products = () => {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [error, setError] = useState(null);
   
   const { 
     products, 
@@ -19,98 +20,139 @@ const Products = () => {
     isLoading, 
     filters, 
     totalPages, 
-    currentPage 
+    currentPage,
+    error: storeError
   } = useSelector(state => state.products);
 
-  // Mock products data for demo
+  console.log('Products page state:', { 
+    products, 
+    searchResults, 
+    searchQuery, 
+    isLoading, 
+    filters, 
+    storeError 
+  });
+
+  // Mock products for development
   const mockProducts = [
     {
       id: 1,
-      name: 'Elite Performance Tee',
-      price: 45.99,
-      originalPrice: 59.99,
-      images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80'],
-      rating: 4.8,
-      reviews: 234,
-      isNew: true,
+      name: 'Premium Cotton T-Shirt',
+      price: 29.99,
+      comparePrice: 39.99,
+      image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
+      images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'],
+      category: 'Men',
       onSale: true,
-      sizes: ['XS', 'S', 'M', 'L', 'XL'],
+      sizes: ['S', 'M', 'L', 'XL'],
       colors: ['Black', 'White', 'Navy'],
-      category: 'Men'
     },
     {
       id: 2,
-      name: 'Training Shorts Pro',
-      price: 39.99,
-      originalPrice: 49.99,
-      images: ['https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80'],
-      rating: 4.6,
-      reviews: 156,
-      isNew: false,
-      onSale: true,
-      sizes: ['S', 'M', 'L', 'XL'],
-      colors: ['Black', 'Gray', 'Blue'],
-      category: 'Women'
+      name: 'Casual Denim Jacket',
+      price: 79.99,
+      image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400',
+      images: ['https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400'],
+      category: 'Men',
+      sizes: ['M', 'L', 'XL'],
+      colors: ['Blue', 'Black'],
     },
     {
       id: 3,
-      name: 'Premium Hoodie',
+      name: 'Sport Running Shoes',
       price: 89.99,
-      originalPrice: 119.99,
-      images: ['https://images.unsplash.com/photo-1556821840-3a63f95609a7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80'],
-      rating: 4.9,
-      reviews: 342,
-      isNew: true,
-      onSale: false,
-      sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-      colors: ['Black', 'White', 'Gray', 'Navy'],
-      category: 'Men'
+      comparePrice: 119.99,
+      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
+      images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400'],
+      category: 'Accessories',
+      onSale: true,
+      sizes: ['8', '9', '10', '11'],
+      colors: ['Red', 'Black', 'White'],
     },
     {
       id: 4,
-      name: 'Athletic Leggings',
-      price: 65.99,
-      images: ['https://images.unsplash.com/photo-1506629905607-d9a42596dd2c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80'],
-      rating: 4.7,
-      reviews: 89,
-      isNew: false,
-      onSale: false,
+      name: 'Elegant Summer Dress',
+      price: 59.99,
+      image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400',
+      images: ['https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400'],
+      category: 'Women',
       sizes: ['XS', 'S', 'M', 'L'],
-      colors: ['Black', 'Navy', 'Burgundy'],
-      category: 'Women'
+      colors: ['White', 'Blue', 'Pink'],
     },
     {
       id: 5,
-      name: 'Sport Sneakers',
-      price: 129.99,
-      images: ['https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80'],
-      rating: 4.8,
-      reviews: 203,
-      isNew: true,
-      onSale: false,
-      sizes: ['7', '8', '9', '10', '11', '12'],
-      colors: ['White', 'Black', 'Red'],
-      category: 'Shoes'
+      name: 'Designer Handbag',
+      price: 149.99,
+      image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400',
+      images: ['https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400'],
+      category: 'Accessories',
+      sizes: ['One Size'],
+      colors: ['Brown', 'Black'],
     },
     {
       id: 6,
-      name: 'Wireless Earbuds',
-      price: 99.99,
-      originalPrice: 149.99,
-      images: ['https://images.unsplash.com/photo-1590658268037-6bf12165a8df?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1932&q=80'],
-      rating: 4.4,
-      reviews: 67,
-      isNew: false,
+      name: 'Classic Polo Shirt',
+      price: 34.99,
+      image: 'https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400',
+      images: ['https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=400'],
+      category: 'Men',
+      sizes: ['S', 'M', 'L', 'XL'],
+      colors: ['White', 'Navy', 'Red'],
+    },
+    {
+      id: 7,
+      name: 'Yoga Leggings',
+      price: 44.99,
+      image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400',
+      images: ['https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400'],
+      category: 'Women',
+      sizes: ['XS', 'S', 'M', 'L'],
+      colors: ['Black', 'Gray', 'Purple'],
+    },
+    {
+      id: 8,
+      name: 'Leather Watch',
+      price: 129.99,
+      comparePrice: 179.99,
+      image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400',
+      images: ['https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400'],
+      category: 'Accessories',
       onSale: true,
       sizes: ['One Size'],
-      colors: ['Black', 'White'],
-      category: 'Accessories'
-    }
+      colors: ['Brown', 'Black'],
+    },
   ];
 
   const displayProducts = searchQuery ? searchResults : (products.length > 0 ? products : mockProducts);
 
+  // Normalize backend data to match frontend expectations
+  const normalizedProducts = displayProducts.map(product => ({
+    ...product,
+    // Normalize category names to match frontend filters
+    category: product.category === 'men' ? 'Men' : 
+              product.category === 'women' ? 'Women' : 
+              product.category === 'unisex' ? 'Men' : // Treat unisex as Men for filtering
+              product.category,
+    // Ensure image format consistency
+    images: product.images ? product.images.map(img => 
+      typeof img === 'string' ? img : img.url || img
+    ) : [],
+    // Normalize sizes to be consistent
+    sizes: product.sizes ? product.sizes.map(size => 
+      typeof size === 'string' ? size : size.size || size
+    ) : [],
+    // Normalize colors to be consistent  
+    colors: product.colors ? product.colors.map(color => 
+      typeof color === 'string' ? color : color.name || color
+    ) : []
+  }));
+
+  console.log('Display products:', displayProducts);
+  console.log('Normalized products:', normalizedProducts);
+
   useEffect(() => {
+    console.log('Products useEffect triggered:', { searchParams: searchParams.toString() });
+    
     // Initialize filters from URL params
     const urlFilters = {};
     const category = searchParams.get('category');
@@ -125,7 +167,11 @@ const Products = () => {
       dispatch(setFilters(urlFilters));
     }
     
-    dispatch(fetchProducts(urlFilters));
+    // Always try to fetch products
+    dispatch(fetchProducts(urlFilters)).catch(err => {
+      console.error('Failed to fetch products:', err);
+      setError('Failed to load products from server.');
+    });
   }, [dispatch, searchParams]);
 
   const handleFilterChange = (newFilters) => {
@@ -149,8 +195,7 @@ const Products = () => {
     dispatch(clearFilters());
     setSearchParams({});
   };
-
-  const filteredProducts = displayProducts.filter(product => {
+  const filteredProducts = normalizedProducts.filter(product => {
     if (filters.category && filters.category !== 'All' && product.category !== filters.category) {
       return false;
     }
@@ -220,21 +265,39 @@ const Products = () => {
               onFilterChange={handleFilterChange}
               onClearFilters={handleClearFilters}
             />
-          </div>
-
-          {/* Products Grid */}
+          </div>          {/* Products Grid */}
           <div className="flex-1">
+            {error && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+                <div className="text-yellow-800">{error}</div>
+                <button 
+                  onClick={() => setError(null)} 
+                  className="text-yellow-600 underline text-sm mt-2"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+            
+            {storeError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                <div className="text-red-800">Store Error: {storeError}</div>
+              </div>
+            )}
+            
             {isLoading ? (
               <LoadingSpinner message="Loading products..." />
             ) : sortedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sortedProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard3D key={product.id || product._id} product={product} />
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <div className="text-gray-500 mb-4">No products found</div>
+                <div className="text-gray-500 mb-4">
+                  {normalizedProducts.length === 0 ? 'No products available' : 'No products found matching your filters'}
+                </div>
                 <button
                   onClick={handleClearFilters}
                   className="btn-primary"

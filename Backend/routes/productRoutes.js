@@ -1,53 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getProducts,
-  getProduct,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getFeaturedProducts,
-  getCategories
-} = require('../controllers/productController');
-const auth = require('../middleware/auth');
-const { adminAuth } = require('../middleware/roleAuth');
-const { validateProduct } = require('../middleware/validation');
+const { body } = require('express-validator');
+const productController = require('../controllers/productController');
+const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
+const validate = require('../middleware/validationMiddleware');
+const upload = require('../middleware/uploadMiddleware');
+
+// Validation rules
+const productValidation = [
+  body('name').trim().notEmpty().withMessage('Product name is required'),
+  body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('category').trim().notEmpty().withMessage('Category is required'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
+];
 
 // Public routes
-// @route   GET /api/products
-// @desc    Get all products with filtering
-// @access  Public
-router.get('/', getProducts);
+router.get('/', productController.getAllProducts);
+router.get('/:id', productController.getProductById);
+router.get('/category/:category', productController.getProductsByCategory);
+router.get('/search/:query', productController.searchProducts);
 
-// @route   GET /api/products/featured
-// @desc    Get featured products
-// @access  Public
-router.get('/featured', getFeaturedProducts);
-
-// @route   GET /api/products/categories
-// @desc    Get product categories
-// @access  Public
-router.get('/categories', getCategories);
-
-// @route   GET /api/products/:id
-// @desc    Get single product
-// @access  Public
-router.get('/:id', getProduct);
-
-// Admin routes
-// @route   POST /api/products
-// @desc    Create product
-// @access  Private/Admin
-router.post('/', auth, adminAuth, validateProduct, createProduct);
-
-// @route   PUT /api/products/:id
-// @desc    Update product
-// @access  Private/Admin
-router.put('/:id', auth, adminAuth, validateProduct, updateProduct);
-
-// @route   DELETE /api/products/:id
-// @desc    Delete product
-// @access  Private/Admin
-router.delete('/:id', auth, adminAuth, deleteProduct);
+// Protected routes (Admin only)
+router.post('/', verifyToken, isAdmin, productValidation, validate, productController.createProduct);
+router.put('/:id', verifyToken, isAdmin, productValidation, validate, productController.updateProduct);
+router.delete('/:id', verifyToken, isAdmin, productController.deleteProduct);
+router.patch('/:id/stock', verifyToken, isAdmin, productController.updateStock);
+router.post('/:id/images', verifyToken, isAdmin, upload.array('images', 5), productController.uploadImages);
+router.delete('/:id/images/:imageId', verifyToken, isAdmin, productController.deleteImage);
 
 module.exports = router;

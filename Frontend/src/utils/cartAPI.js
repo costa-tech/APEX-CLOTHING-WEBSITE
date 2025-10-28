@@ -13,7 +13,7 @@ export const getCart = async () => {
 // Add item to cart
 export const addToCart = async (cartData) => {
   try {
-    const response = await api.post('/cart/add', cartData);
+    const response = await api.post('/cart', cartData);
     return response;
   } catch (error) {
     throw error;
@@ -23,7 +23,7 @@ export const addToCart = async (cartData) => {
 // Update cart item quantity
 export const updateCartItem = async (itemId, quantity) => {
   try {
-    const response = await api.put(`/cart/update/${itemId}`, { quantity });
+    const response = await api.put(`/cart/${itemId}`, { quantity });
     return response;
   } catch (error) {
     throw error;
@@ -33,7 +33,7 @@ export const updateCartItem = async (itemId, quantity) => {
 // Remove item from cart
 export const removeFromCart = async (itemId) => {
   try {
-    const response = await api.delete(`/cart/remove/${itemId}`);
+    const response = await api.delete(`/cart/${itemId}`);
     return response;
   } catch (error) {
     throw error;
@@ -43,7 +43,7 @@ export const removeFromCart = async (itemId) => {
 // Clear entire cart
 export const clearCart = async () => {
   try {
-    const response = await api.delete('/cart/clear');
+    const response = await api.delete('/cart');
     return response;
   } catch (error) {
     throw error;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 
 const GlobalSearch = ({ isOpen, onClose }) => {
@@ -172,7 +172,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-500 focus:outline-none"
               >
-                <XMarkIcon className="h-6 w-6" />
+                <HiOutlineX className="h-6 w-6" />
               </button>
             </div>
           </div>
@@ -180,7 +180,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
           {/* Search Input */}
           <div className="bg-white px-6 py-4 border-b border-gray-200">
             <div className="relative">
-              <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <HiOutlineSearch className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search products, pages, categories..."
@@ -251,14 +251,14 @@ const GlobalSearch = ({ isOpen, onClose }) => {
               </div>
             ) : searchTerm.trim() ? (
               <div className="px-6 py-8 text-center">
-                <MagnifyingGlassIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <HiOutlineSearch className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-sm text-gray-500">
                   No results found for "{searchTerm}"
                 </p>
               </div>
             ) : (
               <div className="px-6 py-8 text-center">
-                <MagnifyingGlassIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <HiOutlineSearch className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-sm text-gray-500">
                   Start typing to search products, pages, and categories
                 </p>
