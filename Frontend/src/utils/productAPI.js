@@ -13,15 +13,50 @@ export const getProducts = async (filters = {}) => {
     }
   });
 
-  return await api.get(`/products?${params.toString()}`);
+  const response = await api.get(`/products?${params.toString()}`);
+  
+  // Extract products from the nested response structure
+  if (response.status === 'success' && response.data) {
+    return {
+      products: response.data.products || [],
+      pagination: response.data.pagination || {},
+      totalPages: response.data.pagination?.totalPages || 1
+    };
+  }
+  
+  // Fallback for different response structures
+  return {
+    products: Array.isArray(response) ? response : (response.products || []),
+    totalPages: 1
+  };
 };
 
 export const getProductById = async (id) => {
-  return await api.get(`/products/${id}`);
+  const response = await api.get(`/products/${id}`);
+  
+  // Extract product from nested response
+  if (response.status === 'success' && response.data) {
+    return response.data.product || response.data;
+  }
+  
+  return response.product || response;
 };
 
 export const searchProducts = async (query) => {
-  return await api.get(`/products/search?q=${encodeURIComponent(query)}`);
+  const response = await api.get(`/products/search?q=${encodeURIComponent(query)}`);
+  
+  // Extract products from nested response
+  if (response.status === 'success' && response.data) {
+    return {
+      products: response.data.products || [],
+      totalPages: response.data.pagination?.totalPages || 1
+    };
+  }
+  
+  return {
+    products: Array.isArray(response) ? response : (response.products || []),
+    totalPages: 1
+  };
 };
 
 export const getFeaturedProducts = async () => {

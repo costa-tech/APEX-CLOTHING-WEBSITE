@@ -48,16 +48,21 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
   try {
+    console.log('🔵 Firebase register called with:', userData);
     const { email, password, name } = userData;
     
     // Create user in Firebase Auth
+    console.log('Creating user in Firebase Auth...');
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    console.log('✅ User created in Firebase Auth:', user.uid);
     
     // Update display name
+    console.log('Updating display name...');
     await updateFirebaseProfile(user, { displayName: name });
     
     // Create user document in Firestore
+    console.log('Creating user document in Firestore...');
     await setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
       email: user.email,
@@ -72,11 +77,12 @@ export const register = async (userData) => {
         totalSpent: 0
       }
     });
+    console.log('✅ User document created in Firestore');
     
     // Get user token
     const token = await user.getIdToken();
     
-    return {
+    const result = {
       token,
       user: {
         uid: user.uid,
@@ -85,8 +91,13 @@ export const register = async (userData) => {
         role: 'customer'
       }
     };
+    
+    console.log('✅ Registration successful:', result);
+    return result;
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ Registration error:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
     throw {
       response: {
         data: {
@@ -99,26 +110,51 @@ export const register = async (userData) => {
 
 export const verifyToken = async (token) => {
   try {
-    // Get current user from Firebase
-    const user = auth.currentUser;
-    
-    if (!user) {
-      throw new Error('No user logged in');
-    }
-    
-    // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const userData = userDoc.exists() ? userDoc.data() : null;
-    
-    return {
-      user: {
-        uid: user.uid,
-        email: user.email,
-        name: userData?.name || user.displayName,
-        role: userData?.role || 'customer',
-        ...userData
-      }
-    };
+    // Wait for Firebase auth to initialize
+    return new Promise((resolve, reject) => {
+      const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        unsubscribe(); // Unsubscribe immediately after getting state
+        
+        if (!user) {
+          reject({
+            response: {
+              data: {
+                message: 'No user logged in'
+              }
+            }
+          });
+          return;
+        }
+        
+        try {
+          // Verify the token is still valid
+          await user.getIdToken(true); // Force refresh
+          
+          // Get user data from Firestore
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.exists() ? userDoc.data() : null;
+          
+          resolve({
+            user: {
+              uid: user.uid,
+              email: user.email,
+              name: userData?.name || user.displayName,
+              role: userData?.role || 'customer',
+              ...userData
+            }
+          });
+        } catch (error) {
+          console.error('Token verification error:', error);
+          reject({
+            response: {
+              data: {
+                message: 'Invalid token'
+              }
+            }
+          });
+        }
+      });
+    });
   } catch (error) {
     console.error('Token verification error:', error);
     throw {

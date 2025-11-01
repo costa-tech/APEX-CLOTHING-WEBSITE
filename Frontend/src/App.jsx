@@ -5,8 +5,9 @@ import { ToastContainer } from 'react-toastify';
 import { store } from './store/store';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { checkAuth } from './store/slices/authSlice';
-import { fetchCart } from './store/slices/cartSlice';
-import { fetchWishlist } from './store/slices/wishlistSlice';
+import { loadLocalCart, loadUserCart } from './store/slices/cartSlice';
+import { loadLocalWishlist, loadUserWishlist } from './store/slices/wishlistSlice';
+import { syncLocalToUserProfile } from './utils/userDataSync';
 
 // Layout Components
 import Navbar from './components/layout/Navbar';
@@ -67,25 +68,75 @@ import 'react-toastify/dist/ReactToastify.css';
 function AppContent() {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { user, isAuthenticated } = useSelector(state => state.auth);
+  const { user, isAuthenticated, isLoading } = useSelector(state => state.auth);
   const isAdminRoute = location.pathname.startsWith('/admin');
-  // const [showSplash, setShowSplash] = useState(true); // DISABLED - causing React errors
+  const [authChecked, setAuthChecked] = useState(false);
+  const [dataSynced, setDataSynced] = useState(false);
 
+  // Load local cart/wishlist on app init (for guests)
   useEffect(() => {
-    dispatch(checkAuth());
+    if (!isAuthenticated) {
+      dispatch(loadLocalCart());
+      dispatch(loadLocalWishlist());
+      console.log('👤 Guest mode: Loaded local cart and wishlist');
+    }
+  }, [dispatch, isAuthenticated]);
+
+  // Check auth on mount
+  useEffect(() => {
+    dispatch(checkAuth()).finally(() => {
+      setAuthChecked(true);
+    });
   }, [dispatch]);
 
-  // Fetch user data when authenticated
+  // Sync local data to user profile when user logs in (CUSTOMERS ONLY, NOT ADMINS)
   useEffect(() => {
-    if (isAuthenticated && user) {
-      dispatch(fetchCart());
-      dispatch(fetchWishlist());
-    }
-  }, [dispatch, isAuthenticated, user]);
+    const syncUserData = async () => {
+      if (isAuthenticated && user && !dataSynced) {
+        // Skip sync for admin users - admins don't need cart/wishlist
+        if (user.role === 'admin') {
+          console.log('🔐 Admin user detected, skipping cart/wishlist sync');
+          setDataSynced(true);
+          return;
+        }
+        
+        try {
+          console.log('🔄 Customer authenticated, syncing data...');
+          
+          // Sync local cart/wishlist to Firebase and get merged data
+          const syncedData = await syncLocalToUserProfile(user.uid);
+          
+          // Load the merged data into Redux
+          dispatch(loadUserCart(syncedData.cart));
+          dispatch(loadUserWishlist(syncedData.wishlist));
+          
+          setDataSynced(true);
+          console.log('✅ Customer data synced successfully');
+        } catch (error) {
+          console.error('❌ Error syncing user data:', error);
+          // Fallback: just load local data
+          dispatch(loadLocalCart());
+          dispatch(loadLocalWishlist());
+        }
+      }
+    };
+    
+    syncUserData();
+  }, [dispatch, isAuthenticated, user, dataSynced]);
+  
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Show loading spinner while checking auth
+  if (!authChecked || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+  }
 
   // // Handle splash screen completion
   // const handleSplashComplete = () => {

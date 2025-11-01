@@ -144,8 +144,23 @@ const Collections = () => {
     if (category) params.category = category;
     if (search) params.search = search;
     if (sale) params.sale = sale;
+    
+    console.log('🔍 Fetching products with params:', params);
     dispatch(fetchProducts(params));
   }, [dispatch, category, search, sale]);
+
+  // Log products when they change
+  useEffect(() => {
+    console.log('📦 Products from Redux:', products);
+    console.log('📊 Display products:', displayProducts);
+    if (displayProducts.length > 0) {
+      console.log('🖼️ First product image data:', {
+        image: displayProducts[0].image,
+        images: displayProducts[0].images,
+        name: displayProducts[0].name
+      });
+    }
+  }, [products, displayProducts]);
 
   if (loading) {
     return (

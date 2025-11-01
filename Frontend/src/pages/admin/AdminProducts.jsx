@@ -80,8 +80,13 @@ const AdminProducts = () => {
       setLoading(true);
       try {
         const response = await api.get('/products');
-        if (response.data.status === 'success') {
-          setProducts(response.data.data.products || []);
+        console.log('📦 Fetched products response:', response);
+        
+        // Handle the nested response structure
+        if (response.status === 'success') {
+          const productsList = response.data?.products || [];
+          console.log('📦 Products list:', productsList);
+          setProducts(productsList);
         }
       } catch (error) {
         console.error('Fetch products error:', error);
@@ -123,10 +128,9 @@ const AdminProducts = () => {
       try {
         const response = await api.delete(`/products/${id}`);
         
-        if (response.data.status === 'success') {
-          setProducts(products.filter(product => product.id !== id));
-          toast.success('✅ Product deleted successfully!');
-        }
+        // Update state immediately regardless of response format
+        setProducts(prevProducts => prevProducts.filter(product => product.id !== id));
+        toast.success('✅ Product deleted successfully!');
       } catch (error) {
         console.error('Delete product error:', error);
         toast.error(error.response?.data?.message || 'Failed to delete product');
@@ -172,32 +176,44 @@ const AdminProducts = () => {
   const handleSaveProduct = async (productData) => {
     setFormLoading(true);
     try {
+      console.log('💾 Saving product:', productData);
+      
       if (editingProduct) {
         // Update existing product
         const response = await api.put(`/products/${editingProduct.id}`, productData);
+        console.log('✅ Update response:', response);
         
-        if (response.data.status === 'success') {
-          setProducts(products.map(product => 
+        // Extract the updated product from response
+        const updatedProduct = response.data || response;
+        
+        // Update the product in the local state
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
             product.id === editingProduct.id 
-              ? { ...response.data.data }
+              ? { ...product, ...updatedProduct, id: editingProduct.id }
               : product
-          ));
-          toast.success('✅ Product updated successfully!');
-        }
+          )
+        );
+        
+        toast.success('✅ Product updated successfully!');
       } else {
         // Add new product
         const response = await api.post('/products', productData);
+        console.log('✅ Create response:', response);
         
-        if (response.data.status === 'success') {
-          const newProduct = response.data.data;
-          setProducts([newProduct, ...products]);
-          toast.success('✅ Product added successfully!');
-        }
+        // Extract the new product from response
+        const newProduct = response.data || response;
+        
+        // Add to the beginning of the list
+        setProducts(prevProducts => [newProduct, ...prevProducts]);
+        
+        toast.success('✅ Product added successfully!');
       }
       
       handleCloseForm();
     } catch (error) {
-      console.error('Save product error:', error);
+      console.error('❌ Save product error:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to save product');
     } finally {
       setFormLoading(false);
@@ -337,17 +353,23 @@ const AdminProducts = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-16 w-16">
-                          {product.image ? (
+                          {product.image || product.images?.[0] ? (
                             <img
                               className="h-16 w-16 rounded-lg object-cover"
-                              src={product.image}
+                              src={product.image || product.images?.[0]}
                               alt={product.name}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
                             />
-                          ) : (
-                            <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
-                              <PhotoIcon className="h-8 w-8 text-gray-400" />
-                            </div>
-                          )}
+                          ) : null}
+                          <div 
+                            className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center"
+                            style={{ display: (product.image || product.images?.[0]) ? 'none' : 'flex' }}
+                          >
+                            <PhotoIcon className="h-8 w-8 text-gray-400" />
+                          </div>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>

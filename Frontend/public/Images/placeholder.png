@@ -1,0 +1,6 @@
+This is a placeholder file marker. Since we can't create actual PNG files via text tools, please:
+1. Create a simple placeholder image (400x400px)
+2. Save it as: Frontend\public\images\placeholder.png
+3. Or use any default product image you have
+
+Alternatively, the code will gracefully handle missing images with the onError handler.

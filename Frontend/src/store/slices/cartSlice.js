@@ -1,6 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { toast } from 'react-toastify';
 import * as cartAPI from '../../utils/cartAPI';
+import { 
+  getLocalCart, 
+  saveLocalCart, 
+  saveUserCart,
+  loadUserData,
+  syncLocalToUserProfile 
+} from '../../utils/userDataSync';
 
 // Async thunks for cart operations
 export const fetchCart = createAsyncThunk(
@@ -10,6 +17,10 @@ export const fetchCart = createAsyncThunk(
       const response = await cartAPI.getCart();
       return response.cart;
     } catch (error) {
+      // Silently fail if cart endpoint doesn't exist (404)
+      if (error.response?.status === 404) {
+        return rejectWithValue('cart_not_available');
+      }
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch cart');
     }
   }
@@ -72,12 +83,48 @@ const initialState = {
   isOpen: false,
   isLoading: false,
   error: null,
+  synced: false, // Track if user data has been synced
 };
 
 const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
+    // Load cart from localStorage on app init (for guests)
+    loadLocalCart: (state) => {
+      const localCart = getLocalCart();
+      if (localCart && localCart.items) {
+        state.items = localCart.items;
+        cartSlice.caseReducers.calculateTotals(state);
+        console.log('📦 Loaded cart from localStorage:', state.items.length, 'items');
+      }
+    },
+    
+    // Load cart from Firebase (for logged-in users)
+    loadUserCart: (state, action) => {
+      const userCart = action.payload;
+      if (userCart && userCart.items) {
+        state.items = userCart.items;
+        cartSlice.caseReducers.calculateTotals(state);
+        state.synced = true;
+        console.log('📦 Loaded cart from Firebase:', state.items.length, 'items');
+      }
+    },
+    
+    // Save cart (to localStorage or Firebase based on auth state)
+    saveCart: (state, action) => {
+      const userId = action.payload?.userId;
+      const cartData = { items: state.items };
+      
+      if (userId) {
+        // User is logged in, save to Firebase
+        saveUserCart(userId, cartData);
+      } else {
+        // Guest user, save to localStorage
+        saveLocalCart(cartData);
+      }
+    },
+    
     // Local cart operations (for guest users or immediate UI updates)
     addToCart: (state, action) => {
       // Handle both formats: { product, size, quantity } OR { id, name, price, image, size, quantity }
@@ -88,7 +135,7 @@ const cartSlice = createSlice({
       const color = payload.color || 'Default';
       
       // Get product image (handle both image and images array)
-      const productImage = product.image || product.images?.[0] || 'https://via.placeholder.com/400';
+      const productImage = product.image || product.images?.[0] || '/images/placeholder.png';
       
       const existingItem = state.items.find(
         item => item.id === product.id && item.size === size && item.color === color
@@ -111,6 +158,9 @@ const cartSlice = createSlice({
       }
 
       cartSlice.caseReducers.calculateTotals(state);
+      
+      // Auto-save to localStorage
+      saveLocalCart({ items: state.items });
     },
 
     removeFromCart: (state, action) => {
@@ -124,6 +174,9 @@ const cartSlice = createSlice({
         state.items.splice(itemIndex, 1);
         toast.success(`${item.name} removed from cart`);
         cartSlice.caseReducers.calculateTotals(state);
+        
+        // Auto-save to localStorage
+        saveLocalCart({ items: state.items });
       }
     },
 
@@ -139,6 +192,9 @@ const cartSlice = createSlice({
         } else {
           item.quantity = quantity;
           cartSlice.caseReducers.calculateTotals(state);
+          
+          // Auto-save to localStorage
+          saveLocalCart({ items: state.items });
         }
       }
     },
@@ -148,6 +204,9 @@ const cartSlice = createSlice({
       state.totalQuantity = 0;
       state.totalAmount = 0;
       toast.success('Cart cleared');
+      
+      // Auto-save to localStorage
+      saveLocalCart({ items: [] });
     },
 
     toggleCart: (state) => {
@@ -200,7 +259,10 @@ const cartSlice = createSlice({
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        // Don't set error if it's just that the cart API isn't available
+        if (action.payload !== 'cart_not_available') {
+          state.error = action.payload;
+        }
       })
       // Add to Cart
       .addCase(addToCartAsync.pending, (state) => {
@@ -296,6 +358,9 @@ export const {
   toggleCart,
   calculateTotals,
   clearError,
+  loadLocalCart,
+  loadUserCart,
+  saveCart,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

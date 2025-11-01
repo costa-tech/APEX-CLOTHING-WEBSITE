@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -25,6 +25,15 @@ const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// Set auth persistence to LOCAL (survives browser refresh)
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log('✅ Firebase auth persistence enabled');
+  })
+  .catch((error) => {
+    console.error('❌ Firebase auth persistence error:', error);
+  });
 
 // Export Firebase services for use in your app
 export { app, analytics, auth, db, storage };

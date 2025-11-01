@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { toast } from 'react-toastify';
 import * as wishlistAPI from '../../utils/wishlistAPI';
+import { 
+  getLocalWishlist, 
+  saveLocalWishlist, 
+  saveUserWishlist 
+} from '../../utils/userDataSync';
 
 // Async thunks for wishlist operations
 export const fetchWishlist = createAsyncThunk(
@@ -10,6 +15,10 @@ export const fetchWishlist = createAsyncThunk(
       const response = await wishlistAPI.getWishlist();
       return response.wishlist;
     } catch (error) {
+      // Silently fail if wishlist endpoint doesn't exist (404)
+      if (error.response?.status === 404) {
+        return rejectWithValue('wishlist_not_available');
+      }
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch wishlist');
     }
   }
@@ -43,12 +52,32 @@ const initialState = {
   items: [],
   isLoading: false,
   error: null,
+  synced: false, // Track if user data has been synced
 };
 
 const wishlistSlice = createSlice({
   name: 'wishlist',
   initialState,
   reducers: {
+    // Load wishlist from localStorage on app init (for guests)
+    loadLocalWishlist: (state) => {
+      const localWishlist = getLocalWishlist();
+      if (localWishlist && localWishlist.items) {
+        state.items = localWishlist.items;
+        console.log('💝 Loaded wishlist from localStorage:', state.items.length, 'items');
+      }
+    },
+    
+    // Load wishlist from Firebase (for logged-in users)
+    loadUserWishlist: (state, action) => {
+      const userWishlist = action.payload;
+      if (userWishlist && userWishlist.items) {
+        state.items = userWishlist.items;
+        state.synced = true;
+        console.log('💝 Loaded wishlist from Firebase:', state.items.length, 'items');
+      }
+    },
+    
     // Local wishlist operations (for guest users)
     addToWishlist: (state, action) => {
       const product = action.payload;
@@ -57,6 +86,9 @@ const wishlistSlice = createSlice({
       if (!existingItem) {
         state.items.push(product);
         toast.success(`${product.name} added to wishlist`);
+        
+        // Auto-save to localStorage
+        saveLocalWishlist({ items: state.items });
       } else {
         toast.info(`${product.name} is already in your wishlist`);
       }
@@ -70,12 +102,18 @@ const wishlistSlice = createSlice({
         const item = state.items[itemIndex];
         state.items.splice(itemIndex, 1);
         toast.success(`${item.name} removed from wishlist`);
+        
+        // Auto-save to localStorage
+        saveLocalWishlist({ items: state.items });
       }
     },
 
     clearWishlist: (state) => {
       state.items = [];
       toast.success('Wishlist cleared');
+      
+      // Auto-save to localStorage
+      saveLocalWishlist({ items: [] });
     },
 
     clearError: (state) => {
@@ -108,7 +146,10 @@ const wishlistSlice = createSlice({
       })
       .addCase(fetchWishlist.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        // Don't set error if it's just that the wishlist API isn't available
+        if (action.payload !== 'wishlist_not_available') {
+          state.error = action.payload;
+        }
       })
       // Add to Wishlist
       .addCase(addToWishlistAsync.pending, (state) => {
@@ -164,6 +205,8 @@ export const {
   removeFromWishlist,
   clearWishlist,
   clearError,
+  loadLocalWishlist,
+  loadUserWishlist,
 } = wishlistSlice.actions;
 
 export default wishlistSlice.reducer;

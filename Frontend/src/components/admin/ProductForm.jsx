@@ -137,8 +137,11 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
           },
         });
 
-        if (response.data.status === 'success') {
-          const imageUrl = response.data.data.imagePath; // e.g., "/Images/product-123456.jpg"
+        console.log('📸 Image upload response:', response);
+
+        if (response.status === 'success') {
+          const imageUrl = response.data.imagePath; // e.g., "/Images/product-123456.jpg"
+          console.log('📸 Image URL:', imageUrl);
           setImagePreview(imageUrl);
           setFormData(prev => ({
             ...prev,
@@ -222,7 +225,14 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
       return;
     }
 
-    onSave(formData);
+    // Set the first image in the images array as the main product.image
+    const productData = {
+      ...formData,
+      image: formData.images[0] || imagePreview || '',
+    };
+
+    console.log('💾 Submitting product data:', productData);
+    onSave(productData);
   };
 
   const tabs = [

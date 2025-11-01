@@ -19,6 +19,24 @@ const ProductCard3D = ({ product, index = 0 }) => {
     triggerOnce: true
   });
 
+  // Get the product image - handle both formats
+  const getProductImage = () => {
+    // First try product.image
+    if (product.image) {
+      return product.image;
+    }
+    // Then try first item in images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+      // Handle if images array contains objects with url property
+      return typeof firstImage === 'string' ? firstImage : firstImage?.url || firstImage;
+    }
+    // Fallback to local placeholder (no external dependency)
+    return '/images/placeholder.png';
+  };
+
+  const productImage = getProductImage();
+
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width - 0.5) * 20;
@@ -32,7 +50,6 @@ const ProductCard3D = ({ product, index = 0 }) => {
       e.preventDefault();
       e.stopPropagation();
     }
-    const productImage = product.image || product.images?.[0] || 'https://via.placeholder.com/400';
     const productPrice = product.salePrice || product.price;
     dispatch(addToCart({
       id: product.id,
@@ -152,9 +169,13 @@ const ProductCard3D = ({ product, index = 0 }) => {
             }}
           >
             <img
-              src={product.image}
+              src={productImage}
               alt={product.name}
               className="w-full h-64 sm:h-72 object-cover"
+              onError={(e) => {
+                console.error('❌ Image load error for:', product.name, productImage);
+                e.target.src = 'https://via.placeholder.com/400?text=No+Image';
+              }}
             />
             
             {/* Shine Effect */}

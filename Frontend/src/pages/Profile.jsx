@@ -141,19 +141,19 @@ const Profile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <div className="lg:w-1/4">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               {/* User Info */}
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <HiOutlineUser className="w-10 h-10 text-gray-600" />
+                <div className="w-20 h-20 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <HiOutlineUser className="w-10 h-10 text-gray-600 dark:text-gray-400" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">{user?.name || 'User'}</h2>
-                <p className="text-gray-600">{user?.email}</p>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{user?.name || 'User'}</h2>
+                <p className="text-gray-600 dark:text-gray-400">{user?.email}</p>
               </div>
 
               {/* Navigation */}
@@ -166,8 +166,8 @@ const Profile = () => {
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center px-4 py-3 text-left rounded-md transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-black text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-black dark:bg-white text-white dark:text-black'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`}
                     >
                       <Icon className="w-5 h-5 mr-3" />
@@ -178,7 +178,7 @@ const Profile = () => {
                 
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center px-4 py-3 text-left rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                  className="w-full flex items-center px-4 py-3 text-left rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <HiOutlineLogout className="w-5 h-5 mr-3" />
                   Logout
@@ -189,15 +189,15 @@ const Profile = () => {
 
           {/* Main Content */}
           <div className="lg:w-3/4">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               {/* Account Info Tab */}
               {activeTab === 'account' && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Account Information</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Information</h1>
                     <button
                       onClick={() => setIsEditing(!isEditing)}
-                      className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                      className="bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
                     >
                       {isEditing ? 'Cancel' : 'Edit Profile'}
                     </button>
@@ -206,7 +206,7 @@ const Profile = () => {
                   <form className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           First Name
                         </label>
                         <input
@@ -215,7 +215,7 @@ const Profile = () => {
                           value={formData.firstName}
                           onChange={handleChange}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       </div>
                       

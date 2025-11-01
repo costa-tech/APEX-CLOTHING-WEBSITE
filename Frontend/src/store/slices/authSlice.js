@@ -10,6 +10,7 @@ export const login = createAsyncThunk(
     try {
       const response = await authAPI.login(credentials);
       localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Login failed');
@@ -21,17 +22,22 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
+      console.log('🔵 Registering user:', userData);
       const response = await authAPI.register(userData);
+      console.log('✅ Registration response:', response);
       localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      console.error('❌ Registration error:', error);
+      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
     }
   }
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
   localStorage.removeItem('token');
+  localStorage.removeItem('user');
   return null;
 });
 
@@ -44,19 +50,24 @@ export const checkAuth = createAsyncThunk(
         throw new Error('No token found');
       }
       const response = await authAPI.verifyToken(token);
+      // Store user data in localStorage
+      if (response.user) {
+        localStorage.setItem('user', JSON.stringify(response.user));
+      }
       return response;
     } catch (error) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       return rejectWithValue(error.response?.data?.message || 'Authentication failed');
     }
   }
 );
 
 const initialState = {
-  user: null,
+  user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token'),
   isLoading: false,
-  isAuthenticated: false,
+  isAuthenticated: !!localStorage.getItem('token'), // Set to true if token exists
   error: null,
 };
 
@@ -73,6 +84,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
   },
   extraReducers: (builder) => {
