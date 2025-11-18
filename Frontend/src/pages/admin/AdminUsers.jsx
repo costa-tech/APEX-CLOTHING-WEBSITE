@@ -12,91 +12,119 @@ import {
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import UserForm from '../../components/admin/UserForm';
+import { getAllUsers, deleteUser, updateUserStatus, getUserStats } from '../../utils/userAPI';
 
 const AdminUsers = () => {
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      role: 'Customer',
-      status: 'Active',
-      joinDate: '2024-01-10T00:00:00Z',
-      totalOrders: 5,
-      totalSpent: 425.50,
-      lastLogin: '2024-01-15T10:30:00Z',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=center',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      role: 'Customer',
-      status: 'Active',
-      joinDate: '2024-01-08T00:00:00Z',
-      totalOrders: 3,
-      totalSpent: 275.00,
-      lastLogin: '2024-01-15T08:15:00Z',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b8e6?w=100&h=100&fit=crop&crop=center',
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike.johnson@example.com',
-      role: 'Customer',
-      status: 'Inactive',
-      joinDate: '2024-01-05T00:00:00Z',
-      totalOrders: 1,
-      totalSpent: 299.99,
-      lastLogin: '2024-01-10T14:45:00Z',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=center',
-    },
-    {
-      id: 4,
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@example.com',
-      role: 'Admin',
-      status: 'Active',
-      joinDate: '2023-12-01T00:00:00Z',
-      totalOrders: 0,
-      totalSpent: 0,
-      lastLogin: '2024-01-15T16:20:00Z',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=center',
-    },
-    {
-      id: 5,
-      name: 'Alex Brown',
-      email: 'alex.brown@example.com',
-      role: 'Customer',
-      status: 'Suspended',
-      joinDate: '2024-01-12T00:00:00Z',
-      totalOrders: 2,
-      totalSpent: 150.00,
-      lastLogin: '2024-01-13T09:30:00Z',
-      avatar: null,
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalRevenue: 0,
+    newUsersThisMonth: 0,
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
 
-  const roles = ['all', 'Customer', 'Admin', 'Moderator'];
+  const roles = ['all', 'customer', 'admin', 'moderator'];
   const statuses = ['all', 'Active', 'Inactive', 'Suspended'];
+
+  // Fetch users on component mount and when filters change
+  useEffect(() => {
+    fetchUsers();
+    fetchStats();
+  }, [filterRole, filterStatus, sortBy, sortOrder, pagination.page]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (!token) {
+        toast.error('You must be logged in to view users');
+        setLoading(false);
+        return;
+      }
+      
+      if (user.role !== 'admin') {
+        toast.error('Admin access required');
+        setLoading(false);
+        return;
+      }
+      
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        sortBy,
+        order: sortOrder,
+      };
+
+      if (filterRole !== 'all') params.role = filterRole;
+      if (filterStatus !== 'all') params.status = filterStatus;
+
+      const response = await getAllUsers(params);
+      
+      if (response.status === 'success') {
+        setUsers(response.data.users || []);
+        setPagination(response.data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch users:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to load users');
+      }
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await getUserStats();
+      if (response.status === 'success') {
+        setStats({
+          totalUsers: response.data.totalUsers || 0,
+          activeUsers: response.data.activeUsers || 0,
+          totalRevenue: 0,
+          newUsersThisMonth: response.data.newUsersThisMonth || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
 
   const filteredUsers = users
     .filter((user) => {
+      // If no search term, include all users
+      if (!searchTerm || searchTerm.trim() === '') return true;
+      
       const matchesSearch = 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = filterRole === 'all' || user.role === filterRole;
-      const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-      return matchesSearch && matchesRole && matchesStatus;
+        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesSearch;
     })
     .sort((a, b) => {
       let aValue = a[sortBy];
@@ -119,32 +147,29 @@ const AdminUsers = () => {
 
   const handleDeleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      setLoading(true);
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setUsers(users.filter(user => user.id !== id));
-        toast.success('User deleted successfully');
+        const response = await deleteUser(id);
+        if (response.status === 'success') {
+          toast.success('User deleted successfully');
+          fetchUsers(); // Refresh the list
+          fetchStats(); // Update stats
+        }
       } catch (error) {
-        toast.error('Failed to delete user');
-      } finally {
-        setLoading(false);
+        toast.error(error.message || 'Failed to delete user');
       }
     }
   };
+
   const handleStatusUpdate = async (userId, newStatus) => {
-    setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      ));
-      toast.success('User status updated successfully');
+      const response = await updateUserStatus(userId, newStatus);
+      if (response.status === 'success') {
+        toast.success('User status updated successfully');
+        fetchUsers(); // Refresh the list
+        fetchStats(); // Update stats
+      }
     } catch (error) {
-      toast.error('Failed to update user status');
-    } finally {
-      setLoading(false);
+      toast.error(error.message || 'Failed to update user status');
     }
   };
 
@@ -166,25 +191,16 @@ const AdminUsers = () => {
   const handleSaveUser = async (userData) => {
     setFormLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (editingUser) {
-        // Update existing user
-        setUsers(users.map(user => 
-          user.id === editingUser.id ? { ...userData, id: editingUser.id } : user
-        ));
+        // Update existing user - handled by UserForm component
+        await fetchUsers(); // Refresh the list
+        await fetchStats(); // Update stats
       } else {
-        // Create new user
-        const newUser = {
-          ...userData,
-          id: Math.max(...users.map(u => u.id)) + 1,
-          joinDate: new Date().toISOString(),
-          lastLogin: new Date().toISOString(),
-          totalOrders: 0,
-          totalSpent: 0,
-        };
-        setUsers([...users, newUser]);
+        // Create new user would require Firebase Admin registration
+        // This should be handled separately or through Firebase Auth
+        toast.info('User creation requires backend implementation');
+        await fetchUsers();
+        await fetchStats();
       }
     } catch (error) {
       throw error;
@@ -207,12 +223,13 @@ const AdminUsers = () => {
   };
 
   const getRoleColor = (role) => {
-    switch (role) {
-      case 'Admin':
+    const roleStr = (role || '').toLowerCase();
+    switch (roleStr) {
+      case 'admin':
         return 'bg-purple-100 text-purple-800';
-      case 'Moderator':
+      case 'moderator':
         return 'bg-blue-100 text-blue-800';
-      case 'Customer':
+      case 'customer':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -262,7 +279,7 @@ const AdminUsers = () => {
               <UserIcon className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
               </div>
             </div>
           </div>
@@ -272,9 +289,7 @@ const AdminUsers = () => {
               <ShieldCheckIcon className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {users.filter(user => user.status === 'Active').length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activeUsers}</p>
               </div>
             </div>
           </div>
@@ -285,7 +300,7 @@ const AdminUsers = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  ${users.reduce((sum, user) => sum + user.totalSpent, 0).toLocaleString()}
+                  ${users.reduce((sum, user) => sum + parseFloat(user.totalSpent || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -296,13 +311,7 @@ const AdminUsers = () => {
               <CalendarIcon className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">New This Month</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {users.filter(user => {
-                    const joinDate = new Date(user.joinDate);
-                    const now = new Date();
-                    return joinDate.getMonth() === now.getMonth() && joinDate.getFullYear() === now.getFullYear();
-                  }).length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{stats.newUsersThisMonth}</p>
               </div>
             </div>
           </div>
@@ -334,7 +343,7 @@ const AdminUsers = () => {
               >
                 {roles.map((role) => (
                   <option key={role} value={role}>
-                    {role === 'all' ? 'All Roles' : role}
+                    {role === 'all' ? 'All Roles' : role.charAt(0).toUpperCase() + role.slice(1)}
                   </option>
                 ))}
               </select>
@@ -368,10 +377,10 @@ const AdminUsers = () => {
               >
                 <option value="name-asc">Name A-Z</option>
                 <option value="name-desc">Name Z-A</option>
-                <option value="joinDate-desc">Newest First</option>
-                <option value="joinDate-asc">Oldest First</option>
-                <option value="totalSpent-desc">Highest Spender</option>
-                <option value="totalOrders-desc">Most Orders</option>
+                <option value="createdAt-desc">Newest First</option>
+                <option value="createdAt-asc">Oldest First</option>
+                <option value="email-asc">Email A-Z</option>
+                <option value="email-desc">Email Z-A</option>
               </select>
             </div>
           </div>
@@ -432,22 +441,22 @@ const AdminUsers = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
-                        {user.role}
+                        {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Customer'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(user.status)}`}>
-                        {user.status}
+                        {user.status || 'Active'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.totalOrders}
+                      {user.totalOrders || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${user.totalSpent.toFixed(2)}
+                      ${parseFloat(user.totalSpent || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(user.joinDate)}
+                      {formatDate(user.createdAt || user.joinDate)}
                     </td>                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
@@ -502,18 +511,33 @@ const AdminUsers = () => {
         {filteredUsers.length > 0 && (
           <div className="mt-8 flex items-center justify-between">
             <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{filteredUsers.length}</span> users
+              Showing <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
+              <span className="font-medium">{pagination.total}</span> users
             </div>
             <div className="flex items-center space-x-2">
               <button
-                disabled
-                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg cursor-not-allowed"
+                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                disabled={pagination.page === 1}
+                className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                  pagination.page === 1
+                    ? 'text-gray-500 bg-white border border-gray-300 cursor-not-allowed'
+                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 Previous
               </button>
+              <span className="text-sm text-gray-700">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
               <button
-                disabled
-                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg cursor-not-allowed"
+                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                disabled={pagination.page === pagination.totalPages}
+                className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                  pagination.page === pagination.totalPages
+                    ? 'text-gray-500 bg-white border border-gray-300 cursor-not-allowed'
+                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 Next
               </button>

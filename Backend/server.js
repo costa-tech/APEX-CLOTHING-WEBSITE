@@ -19,6 +19,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const couponRoutes = require('./routes/couponRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -81,6 +82,7 @@ app.use(`${BASE_PATH}/products`, productRoutes);
 app.use(`${BASE_PATH}/orders`, orderRoutes);
 app.use(`${BASE_PATH}/users`, userRoutes);
 app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
+app.use(`${BASE_PATH}/coupons`, couponRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
@@ -94,6 +96,7 @@ app.get('/', (req, res) => {
       orders: `${BASE_PATH}/orders`,
       users: `${BASE_PATH}/users`,
       analytics: `${BASE_PATH}/analytics`,
+      coupons: `${BASE_PATH}/coupons`,
     },
   });
 });

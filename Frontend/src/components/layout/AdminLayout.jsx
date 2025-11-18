@@ -7,6 +7,7 @@ import {
   UserGroupIcon,
   ChartBarIcon,
   CogIcon,
+  TicketIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminLayout = ({ children }) => {
@@ -17,6 +18,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Products', href: '/admin/products', icon: ShoppingBagIcon },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCartIcon },
     { name: 'Users', href: '/admin/users', icon: UserGroupIcon },
+    { name: 'Coupons', href: '/admin/coupons', icon: TicketIcon },
     { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
     { name: 'Settings', href: '/admin/settings', icon: CogIcon },
   ];

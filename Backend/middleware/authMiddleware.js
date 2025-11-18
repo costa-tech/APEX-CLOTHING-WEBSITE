@@ -106,8 +106,41 @@ const isAdminOrModerator = async (req, res, next) => {
   }
 };
 
+/**
+ * Optional authentication middleware - doesn't block if no token
+ * Useful for endpoints that work for both authenticated and guest users
+ */
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split('Bearer ')[1];
+
+      try {
+        const decodedToken = await auth.verifyIdToken(token);
+        
+        req.user = {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          role: decodedToken.role || 'customer',
+          emailVerified: decodedToken.email_verified,
+        };
+      } catch (error) {
+        console.log('Optional auth - Invalid token, proceeding as guest');
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Optional auth error:', error);
+    next();
+  }
+};
+
 module.exports = {
   verifyToken,
   isAdmin,
   isAdminOrModerator,
+  optionalAuth,
 };

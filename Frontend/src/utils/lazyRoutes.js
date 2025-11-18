@@ -41,6 +41,10 @@ export const LazyAdminSettings = createTrackedLazy(
   () => import('../pages/admin/AdminSettings'),
   'AdminSettings'
 );
+export const LazyAdminCoupons = createTrackedLazy(
+  () => import('../pages/admin/AdminCoupons'),
+  'AdminCoupons'
+);
 export const LazyOrderDetail = createTrackedLazy(
   () => import('../pages/admin/OrderDetail'),
   'OrderDetail'

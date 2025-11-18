@@ -17,12 +17,13 @@ router.get('/profile', verifyToken, userController.getProfile);
 router.put('/profile', verifyToken, userController.updateProfile);
 
 // Admin routes
+// Note: Specific routes must come before parameterized routes
+router.get('/stats/summary', verifyToken, isAdmin, userController.getUserStats);
 router.get('/', verifyToken, isAdmin, userController.getAllUsers);
 router.get('/:id', verifyToken, isAdmin, userController.getUserById);
 router.put('/:id', verifyToken, isAdmin, userUpdateValidation, validate, userController.updateUser);
 router.delete('/:id', verifyToken, isAdmin, userController.deleteUser);
 router.patch('/:id/status', verifyToken, isAdmin, userController.updateUserStatus);
 router.patch('/:id/role', verifyToken, isAdmin, userController.updateUserRole);
-router.get('/stats/summary', verifyToken, isAdmin, userController.getUserStats);
 
 module.exports = router;

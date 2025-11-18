@@ -53,6 +53,7 @@ import {
   LazyAdminUsers,
   LazyAdminAnalytics,
   LazyAdminSettings,
+  LazyAdminCoupons,
   LazyOrderDetail,
   LazyProfile,
   LazyCheckout,
@@ -198,6 +199,13 @@ function AppContent() {
             <ProtectedRoute adminOnly={true}>
               <LazyWrapper>
                 <LazyAdminAnalytics />
+              </LazyWrapper>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/coupons" element={
+            <ProtectedRoute adminOnly={true}>
+              <LazyWrapper>
+                <LazyAdminCoupons />
               </LazyWrapper>
             </ProtectedRoute>
           } />
