@@ -133,6 +133,7 @@ const cartSlice = createSlice({
       const size = payload.size || 'M';
       const quantity = payload.quantity || 1;
       const color = payload.color || 'Default';
+      const userId = payload.userId; // Get userId if provided
       
       // Get product image (handle both image and images array)
       const productImage = product.image || product.images?.[0] || '/images/placeholder.png';
@@ -159,12 +160,17 @@ const cartSlice = createSlice({
 
       cartSlice.caseReducers.calculateTotals(state);
       
-      // Auto-save to localStorage
-      saveLocalCart({ items: state.items });
+      // Save to Firebase for logged-in users, localStorage for guests
+      const cartData = { items: state.items };
+      if (userId) {
+        saveUserCart(userId, cartData);
+      } else {
+        saveLocalCart(cartData);
+      }
     },
 
     removeFromCart: (state, action) => {
-      const { id, size, color } = action.payload;
+      const { id, size, color, userId } = action.payload;
       const itemIndex = state.items.findIndex(
         item => item.id === id && item.size === size && item.color === color
       );
@@ -175,38 +181,54 @@ const cartSlice = createSlice({
         toast.success(`${item.name} removed from cart`);
         cartSlice.caseReducers.calculateTotals(state);
         
-        // Auto-save to localStorage
-        saveLocalCart({ items: state.items });
+        // Save to Firebase for logged-in users, localStorage for guests
+        const cartData = { items: state.items };
+        if (userId) {
+          saveUserCart(userId, cartData);
+        } else {
+          saveLocalCart(cartData);
+        }
       }
     },
 
     updateQuantity: (state, action) => {
-      const { id, size, color, quantity } = action.payload;
+      const { id, size, color, quantity, userId } = action.payload;
       const item = state.items.find(
         item => item.id === id && item.size === size && item.color === color
       );
 
       if (item) {
         if (quantity <= 0) {
-          cartSlice.caseReducers.removeFromCart(state, { payload: { id, size, color } });
+          cartSlice.caseReducers.removeFromCart(state, { payload: { id, size, color, userId } });
         } else {
           item.quantity = quantity;
           cartSlice.caseReducers.calculateTotals(state);
           
-          // Auto-save to localStorage
-          saveLocalCart({ items: state.items });
+          // Save to Firebase for logged-in users, localStorage for guests
+          const cartData = { items: state.items };
+          if (userId) {
+            saveUserCart(userId, cartData);
+          } else {
+            saveLocalCart(cartData);
+          }
         }
       }
     },
 
-    clearCart: (state) => {
+    clearCart: (state, action) => {
+      const userId = action.payload?.userId;
       state.items = [];
       state.totalQuantity = 0;
       state.totalAmount = 0;
       toast.success('Cart cleared');
       
-      // Auto-save to localStorage
-      saveLocalCart({ items: [] });
+      // Save to Firebase for logged-in users, localStorage for guests
+      const cartData = { items: [] };
+      if (userId) {
+        saveUserCart(userId, cartData);
+      } else {
+        saveLocalCart(cartData);
+      }
     },
 
     toggleCart: (state) => {

@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../store/slices/authSlice';
 import { HiOutlineUser, HiOutlineLocationMarker, HiOutlineHeart, HiOutlineCreditCard, HiOutlineLogout, HiOutlineEye, HiOutlineTruck } from 'react-icons/hi';
 import { toast } from 'react-toastify';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const Profile = () => {
   const dispatch = useDispatch();
@@ -21,38 +24,8 @@ const Profile = () => {
     gender: ''
   });
 
-  // Mock order data
-  const orders = [
-    {
-      id: 'ORD-2025001',
-      date: '2025-05-28',
-      status: 'delivered',
-      total: 89.98,
-      items: [
-        { name: 'Elite Performance Tee', size: 'M', color: 'Black', quantity: 1, price: 45.99 },
-        { name: 'Training Shorts Pro', size: 'M', color: 'Navy', quantity: 1, price: 39.99 }
-      ]
-    },
-    {
-      id: 'ORD-2025002',
-      date: '2025-05-25',
-      status: 'shipped',
-      total: 79.99,
-      items: [
-        { name: 'Performance Hoodie', size: 'L', color: 'Grey', quantity: 1, price: 79.99 }
-      ]
-    },
-    {
-      id: 'ORD-2025003',
-      date: '2025-05-20',
-      status: 'processing',
-      total: 159.97,
-      items: [
-        { name: 'Elite Performance Tee', size: 'L', color: 'White', quantity: 2, price: 45.99 },
-        { name: 'Training Shorts Pro', size: 'L', color: 'Black', quantity: 1, price: 39.99 }
-      ]
-    }
-  ];
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   // Mock addresses
   const addresses = [
@@ -325,8 +298,27 @@ const Profile = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">Order History</h1>
                   
-                  <div className="space-y-6">
-                    {orders.map((order) => (
+                  {ordersLoading ? (
+                    <div className="flex justify-center py-12">
+                      <LoadingSpinner />
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <HiOutlineTruck className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No orders yet</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Start shopping to see your orders here.
+                      </p>
+                      <button
+                        onClick={() => navigate('/products')}
+                        className="mt-4 bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                      >
+                        Browse Products
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {orders.map((order) => (
                       <div key={order.id} className="border border-gray-200 rounded-lg p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
@@ -340,7 +332,7 @@ const Profile = () => {
                               {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                             <p className="text-sm font-medium text-gray-900 mt-1">
-                              ${order.total.toFixed(2)}
+                              Rs. {order.total.toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -354,17 +346,20 @@ const Profile = () => {
                                   (Size: {item.size}, Color: {item.color}, Qty: {item.quantity})
                                 </span>
                               </div>
-                              <span className="font-medium">${item.price}</span>
+                              <span className="font-medium">Rs. {item.price}</span>
                             </div>
                           ))}
                         </div>
                         
                         <div className="flex space-x-3 mt-4 pt-4 border-t border-gray-200">
-                          <button className="flex items-center text-sm text-blue-600 hover:text-blue-800">
+                          <button 
+                            onClick={() => navigate(`/orders/${order.id}`)}
+                            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                          >
                             <HiOutlineEye className="w-4 h-4 mr-1" />
                             View Details
                           </button>
-                          {order.status === 'delivered' && (
+                          {(order.status === 'delivered' || order.status === 'completed') && (
                             <button className="text-sm text-gray-600 hover:text-gray-800">
                               Reorder
                             </button>
@@ -378,6 +373,7 @@ const Profile = () => {
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               )}
 
@@ -439,11 +435,11 @@ const Profile = () => {
                           <div className="flex items-center justify-between mb-3">
                             <div>
                               <span className="text-lg font-semibold text-gray-900">
-                                ${item.price}
+                                Rs. {item.price}
                               </span>
                               {item.originalPrice && (
                                 <span className="text-sm text-gray-500 line-through ml-2">
-                                  ${item.originalPrice}
+                                  Rs. {item.originalPrice}
                                 </span>
                               )}
                             </div>

@@ -270,14 +270,14 @@ function AppContent() {
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/accessibility" element={<Accessibility />} />
             
-            {/* Protected Routes - Lazy Loaded */}
+            {/* Checkout - Available for both guests and logged-in users */}
             <Route path="/checkout" element={
-              <ProtectedRoute>
-                <LazyWrapper>
-                  <LazyCheckout />
-                </LazyWrapper>
-              </ProtectedRoute>
+              <LazyWrapper>
+                <LazyCheckout />
+              </LazyWrapper>
             } />
+            
+            {/* Protected Routes - Lazy Loaded */}
             <Route path="/profile" element={
               <ProtectedRoute>
                 <LazyWrapper>
@@ -285,12 +285,17 @@ function AppContent() {
                 </LazyWrapper>
               </ProtectedRoute>
             } />
-            <Route path="/order-success" element={
+            <Route path="/orders/:id" element={
               <ProtectedRoute>
                 <LazyWrapper>
-                  <LazyOrderSuccess />
+                  <LazyOrderDetail />
                 </LazyWrapper>
               </ProtectedRoute>
+            } />
+            <Route path="/order-success" element={
+              <LazyWrapper>
+                <LazyOrderSuccess />
+              </LazyWrapper>
             } />
           </Routes>
         </ErrorBoundary>

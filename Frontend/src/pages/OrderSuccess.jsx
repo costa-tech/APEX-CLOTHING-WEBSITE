@@ -7,10 +7,11 @@ const OrderSuccess = () => {
   const navigate = useNavigate();
   
   // Get order data from navigation state
-  const { orderNumber, total, items } = location.state || {
+  const { orderNumber, total, items, paymentMethod } = location.state || {
     orderNumber: 'ORD-123456789',
     total: 0,
-    items: []
+    items: [],
+    paymentMethod: 'cod'
   };
 
   const estimatedDelivery = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -56,7 +57,7 @@ const OrderSuccess = () => {
                       <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                     </div>
                     <p className="font-medium text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      Rs. {(item.price * item.quantity).toFixed(2)}
                     </p>
                   </div>
                 ))}
@@ -64,7 +65,7 @@ const OrderSuccess = () => {
                 <div className="pt-4 border-t border-gray-200">
                   <div className="flex justify-between text-lg font-semibold">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>Rs. {total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -77,6 +78,64 @@ const OrderSuccess = () => {
 
           {/* Next Steps */}
           <div className="space-y-6">
+            {/* Payment Instructions */}
+            {paymentMethod === 'bank_transfer' && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg shadow-sm p-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <HiOutlineMail className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-lg mb-2">⚠️ Complete Your Payment</h3>
+                    <p className="text-sm text-gray-700 mb-3">
+                      Please transfer <strong className="text-blue-600 text-lg">Rs. {total.toFixed(2)}</strong> to the following bank account:
+                    </p>
+                    <div className="bg-white rounded-md p-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Bank Name:</span>
+                        <span className="font-medium text-gray-900">Commercial Bank of Ceylon</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account Name:</span>
+                        <span className="font-medium text-gray-900">Clothing Brand (Pvt) Ltd</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account Number:</span>
+                        <span className="font-medium text-gray-900 font-mono">1234567890</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Reference:</span>
+                        <span className="font-medium text-blue-600 font-mono">{orderNumber}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3">
+                      <strong>Important:</strong> Please use your order number <strong>{orderNumber}</strong> as the payment reference. 
+                      Your order will be processed within 24 hours after payment confirmation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === 'cod' && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-lg shadow-sm p-6">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <HiOutlineCheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-2">✅ Cash on Delivery Selected</h3>
+                    <p className="text-sm text-gray-700">
+                      You'll pay <strong className="text-green-600 text-lg">Rs. {total.toFixed(2)}</strong> in cash when your order is delivered.
+                    </p>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Please keep exact change ready for smooth delivery.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Confirmation Email */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-start space-x-3">

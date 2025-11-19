@@ -10,88 +10,68 @@ import {
   XCircleIcon,
   ClockIcon,
   TruckIcon,
+  BanknotesIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const AdminOrders = () => {
-  const [orders, setOrders] = useState([
-    {
-      id: 'ORD-001',
-      customer: {
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-      },
-      items: [
-        { name: 'Athletic Performance Tee', quantity: 2, price: 49.99 },
-        { name: 'Training Shorts', quantity: 1, price: 59.99 },
-      ],
-      total: 159.97,
-      status: 'Completed',
-      paymentStatus: 'Paid',
-      shippingAddress: '123 Main St, City, State 12345',
-      orderDate: '2024-01-15T10:30:00Z',
-      trackingNumber: 'TRK123456789',
-    },
-    {
-      id: 'ORD-002',
-      customer: {
-        name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-      },
-      items: [
-        { name: 'Seamless Sports Bra', quantity: 1, price: 39.99 },
-        { name: 'Compression Leggings', quantity: 1, price: 69.99 },
-      ],
-      total: 109.98,
-      status: 'Processing',
-      paymentStatus: 'Paid',
-      shippingAddress: '456 Oak Ave, City, State 67890',
-      orderDate: '2024-01-15T08:15:00Z',
-      trackingNumber: null,
-    },
-    {
-      id: 'ORD-003',
-      customer: {
-        name: 'Mike Johnson',
-        email: 'mike.johnson@example.com',
-      },
-      items: [
-        { name: 'Premium Training Set', quantity: 1, price: 299.99 },
-      ],
-      total: 299.99,
-      status: 'Shipped',
-      paymentStatus: 'Paid',
-      shippingAddress: '789 Pine St, City, State 54321',
-      orderDate: '2024-01-14T14:45:00Z',
-      trackingNumber: 'TRK987654321',
-    },
-    {
-      id: 'ORD-004',
-      customer: {
-        name: 'Sarah Wilson',
-        email: 'sarah.wilson@example.com',
-      },
-      items: [
-        { name: 'Workout Accessories Bundle', quantity: 1, price: 45.00 },
-      ],
-      total: 45.00,
-      status: 'Pending',
-      paymentStatus: 'Pending',
-      shippingAddress: '321 Elm Dr, City, State 98765',
-      orderDate: '2024-01-14T16:20:00Z',
-      trackingNumber: null,
-    },
-  ]);
-
-  const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
   const [sortBy, setSortBy] = useState('orderDate');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  const orderStatuses = ['all', 'Pending', 'Processing', 'Shipped', 'Completed', 'Cancelled'];
-  const paymentStatuses = ['all', 'Pending', 'Paid', 'Failed', 'Refunded'];
+  const orderStatuses = ['all', 'processing', 'shipped', 'completed', 'cancelled'];
+  const paymentStatuses = ['all', 'pending', 'awaiting_confirmation', 'paid', 'failed'];
+
+  // Load orders from Firestore
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        setLoading(true);
+        const ordersRef = collection(db, 'orders');
+        const q = query(ordersRef, orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        
+        const loadedOrders = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: data.orderNumber || doc.id,
+            docId: doc.id,
+            customer: {
+              name: `${data.customerInfo?.firstName || ''} ${data.customerInfo?.lastName || ''}`.trim(),
+              email: data.customerInfo?.email || '',
+            },
+            items: data.items || [],
+            total: data.total || 0,
+            status: data.orderStatus || 'processing',
+            paymentStatus: data.paymentStatus || 'pending',
+            paymentMethod: data.paymentMethod || 'cod',
+            shippingAddress: `${data.shippingAddress?.address || ''}, ${data.shippingAddress?.city || ''}, ${data.shippingAddress?.state || ''} ${data.shippingAddress?.zipCode || ''}`,
+            orderDate: data.createdAt || new Date().toISOString(),
+            trackingNumber: data.trackingNumber || null,
+            couponCode: data.couponCode || null,
+            discount: data.discount || 0,
+          };
+        });
+        
+        setOrders(loadedOrders);
+        console.log('✅ Loaded orders from Firestore:', loadedOrders.length);
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        toast.error('Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, []);
 
   const filteredOrders = orders
     .filter((order) => {
@@ -305,6 +285,9 @@ const AdminOrders = () => {
                     Payment
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Method
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -342,7 +325,7 @@ const AdminOrders = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ${order.total.toFixed(2)}
+                      Rs. {order.total.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
@@ -353,6 +336,21 @@ const AdminOrders = () => {
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}>
                         {order.paymentStatus}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-sm">
+                        {order.paymentMethod === 'cod' ? (
+                          <>
+                            <BanknotesIcon className="h-4 w-4 text-green-600" />
+                            <span className="text-gray-700">Cash on Delivery</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCardIcon className="h-4 w-4 text-blue-600" />
+                            <span className="text-gray-700">Bank Transfer</span>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(order.orderDate)}

@@ -12,17 +12,94 @@ import {
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const OrderDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // This is the orderNumber like 'ORD-123456789'
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // Mock order data - in a real app, this would come from an API
+  useEffect(() => {
+    const fetchOrder = async () => {
+      setLoading(true);
+      try {
+        // Query Firestore for order with matching orderNumber
+        const ordersRef = collection(db, 'orders');
+        const q = query(ordersRef, where('orderNumber', '==', id));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          toast.error('Order not found');
+          navigate('/admin/orders');
+          return;
+        }
+        
+        const doc = querySnapshot.docs[0];
+        const data = doc.data();
+        
+        // Transform Firestore data to component format
+        const transformedOrder = {
+          id: doc.id,
+          orderNumber: data.orderNumber,
+          status: data.orderStatus || 'processing',
+          paymentStatus: data.paymentStatus || 'pending',
+          paymentMethod: data.paymentMethod || 'cod',
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt || data.createdAt,
+          customer: {
+            id: data.userId || 'guest',
+            name: `${data.customerInfo?.firstName || ''} ${data.customerInfo?.lastName || ''}`.trim(),
+            email: data.customerInfo?.email || '',
+            phone: data.customerInfo?.phone || '',
+            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=center',
+          },
+          shippingAddress: {
+            name: `${data.customerInfo?.firstName || ''} ${data.customerInfo?.lastName || ''}`.trim(),
+            street: data.shippingAddress?.address || '',
+            apartment: data.shippingAddress?.apartment || '',
+            city: data.shippingAddress?.city || '',
+            state: data.shippingAddress?.state || '',
+            postalCode: data.shippingAddress?.zipCode || '',
+            country: 'Sri Lanka',
+          },
+          items: data.items || [],
+          subtotal: data.subtotal || 0,
+          tax: data.tax || 0,
+          shippingCost: data.shippingCost || 0,
+          discount: data.discount || 0,
+          total: data.total || 0,
+          couponCode: data.couponCode || null,
+          payment: {
+            method: data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Bank Transfer',
+            methodType: data.paymentMethod,
+          },
+          shipping: {
+            method: data.shippingMethod || 'standard',
+            trackingNumber: data.trackingNumber || null,
+          },
+        };
+        
+        setOrder(transformedOrder);
+        console.log('✅ Loaded order:', transformedOrder);
+      } catch (error) {
+        console.error('Error loading order:', error);
+        toast.error('Failed to load order details');
+        navigate('/admin/orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [id, navigate]);
+
+  // Remove old mock data
   const mockOrder = {
     id: parseInt(id),
     orderNumber: `ORD-${String(id).padStart(6, '0')}`,
@@ -139,38 +216,34 @@ const OrderDetail = () => {
     ],
   };
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      setLoading(true);
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setOrder(mockOrder);
-      } catch (error) {
-        toast.error('Failed to load order details');
-        navigate('/admin/orders');
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchOrder();
-  }, [id, navigate]);
 
   const updateOrderStatus = async (newStatus) => {
     setUpdating(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { doc: docRef, updateDoc } = await import('firebase/firestore');
+      const ordersRef = collection(db, 'orders');
+      const q = query(ordersRef, where('orderNumber', '==', id));
+      const querySnapshot = await getDocs(q);
       
-      setOrder(prev => ({
-        ...prev,
-        status: newStatus,
-        updatedAt: new Date().toISOString(),
-      }));
-      
-      toast.success(`Order status updated to ${newStatus}`);
+      if (!querySnapshot.empty) {
+        const orderDoc = querySnapshot.docs[0];
+        const orderDocRef = docRef(db, 'orders', orderDoc.id);
+        await updateDoc(orderDocRef, {
+          orderStatus: newStatus,
+          updatedAt: new Date().toISOString(),
+        });
+        
+        setOrder(prev => ({
+          ...prev,
+          status: newStatus,
+          updatedAt: new Date().toISOString(),
+        }));
+        
+        toast.success(`Order status updated to ${newStatus}`);
+      }
     } catch (error) {
+      console.error('Error updating order:', error);
       toast.error('Failed to update order status');
     } finally {
       setUpdating(false);
@@ -178,16 +251,18 @@ const OrderDetail = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'Pending':
+    const lowerStatus = status?.toLowerCase();
+    switch (lowerStatus) {
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Processing':
+      case 'processing':
         return 'bg-blue-100 text-blue-800';
-      case 'Shipped':
+      case 'shipped':
         return 'bg-purple-100 text-purple-800';
-      case 'Delivered':
+      case 'delivered':
+      case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'Cancelled':
+      case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -195,14 +270,17 @@ const OrderDetail = () => {
   };
 
   const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'Paid':
+    const lowerStatus = status?.toLowerCase();
+    switch (lowerStatus) {
+      case 'paid':
         return 'bg-green-100 text-green-800';
-      case 'Pending':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Failed':
+      case 'awaiting_confirmation':
+        return 'bg-blue-100 text-blue-800';
+      case 'failed':
         return 'bg-red-100 text-red-800';
-      case 'Refunded':
+      case 'refunded':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -219,7 +297,7 @@ const OrderDetail = () => {
     });
   };
 
-  const statusOptions = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+  const statusOptions = ['pending', 'processing', 'shipped', 'completed', 'cancelled'];
 
   if (loading) {
     return (
@@ -299,7 +377,7 @@ const OrderDetail = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {order.items.map((item) => (
+                  {order.items && order.items.length > 0 ? order.items.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4">
                       <img
                         src={item.image}
@@ -311,7 +389,7 @@ const OrderDetail = () => {
                           {item.name}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          SKU: {item.sku} • {item.variant}
+                          {item.size && `Size: ${item.size}`} {item.color && `• Color: ${item.color}`}
                         </p>
                         <p className="text-sm text-gray-500">
                           Quantity: {item.quantity}
@@ -319,83 +397,55 @@ const OrderDetail = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          Rs. {(item.price * item.quantity).toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          ${item.price.toFixed(2)} each
+                          Rs. {item.price.toFixed(2)} each
                         </p>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-sm text-gray-500">No items in this order</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Order Timeline */}
+            {/* Order Status */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Order Timeline</h2>
+                <h2 className="text-lg font-medium text-gray-900">Order Status</h2>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {order.timeline.map((event, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        event.completed ? 'bg-green-100' : 'bg-gray-100'
-                      }`}>
-                        {event.completed ? (
-                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <ClockIcon className="w-5 h-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className={`text-sm font-medium ${
-                            event.completed ? 'text-gray-900' : 'text-gray-500'
-                          }`}>
-                            {event.status}
-                          </h3>
-                          {event.timestamp && (
-                            <span className="text-sm text-gray-500">
-                              {formatDate(event.timestamp)}
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-sm mt-1 ${
-                          event.completed ? 'text-gray-600' : 'text-gray-400'
-                        }`}>
-                          {event.description}
-                        </p>
-                      </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-100">
+                      <CheckCircleIcon className="w-5 h-5 text-green-600" />
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Order Notes */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Order Notes</h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {order.notes.map((note) => (
-                    <div key={note.id} className="border-l-4 border-gray-200 pl-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900">
-                          {note.author}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(note.timestamp)}
-                        </span>
-                      </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">Order Placed</h3>
                       <p className="text-sm text-gray-600 mt-1">
-                        {note.content}
+                        {formatDate(order.createdAt)}
                       </p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                      order.status === 'completed' || order.status === 'delivered' ? 'bg-green-100' : 'bg-blue-100'
+                    }`}>
+                      {order.status === 'completed' || order.status === 'delivered' ? (
+                        <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <ClockIcon className="w-5 h-5 text-blue-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-900">Current Status</h3>
+                      <p className="text-sm text-gray-600 mt-1 capitalize">
+                        {order.status}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -424,25 +474,25 @@ const OrderDetail = () => {
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">${order.subtotal.toFixed(2)}</span>
+                    <span className="text-gray-900">Rs. {order.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="text-gray-900">${order.shipping.toFixed(2)}</span>
+                    <span className="text-gray-900">Rs. {order.shippingCost.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tax</span>
-                    <span className="text-gray-900">${order.tax.toFixed(2)}</span>
+                    <span className="text-gray-900">Rs. {order.tax.toFixed(2)}</span>
                   </div>
                   {order.discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Discount</span>
-                      <span className="text-green-600">-${order.discount.toFixed(2)}</span>
+                      <span className="text-green-600">-Rs. {order.discount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-base font-medium border-t pt-2">
                     <span className="text-gray-900">Total</span>
-                    <span className="text-gray-900">${order.total.toFixed(2)}</span>
+                    <span className="text-gray-900">Rs. {order.total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -514,15 +564,24 @@ const OrderDetail = () => {
                 <h2 className="text-lg font-medium text-gray-900">Payment</h2>
               </div>
               <div className="p-6">
-                <div className="flex items-center space-x-2 text-sm">
-                  <CreditCardIcon className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600">
-                    {order.payment.brand} ending in {order.payment.last4}
-                  </span>
+                <div className="flex items-center space-x-2 text-sm mb-2">
+                  {order.payment.methodType === 'cod' ? (
+                    <>
+                      <BanknotesIcon className="w-5 h-5 text-green-600" />
+                      <span className="text-gray-900 font-medium">{order.payment.method}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCardIcon className="w-5 h-5 text-blue-600" />
+                      <span className="text-gray-900 font-medium">{order.payment.method}</span>
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Transaction ID: {order.payment.transactionId}
-                </p>
+                {order.couponCode && (
+                  <p className="text-xs text-green-600 mt-2">
+                    Coupon Applied: {order.couponCode} (-Rs. {order.discount.toFixed(2)})
+                  </p>
+                )}
               </div>
             </div>
           </div>

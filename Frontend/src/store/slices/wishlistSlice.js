@@ -80,22 +80,29 @@ const wishlistSlice = createSlice({
     
     // Local wishlist operations (for guest users)
     addToWishlist: (state, action) => {
-      const product = action.payload;
+      const product = action.payload.product || action.payload;
+      const userId = action.payload.userId;
       const existingItem = state.items.find(item => item.id === product.id);
       
       if (!existingItem) {
         state.items.push(product);
         toast.success(`${product.name} added to wishlist`);
         
-        // Auto-save to localStorage
-        saveLocalWishlist({ items: state.items });
+        // Save to Firebase for logged-in users, localStorage for guests
+        const wishlistData = { items: state.items };
+        if (userId) {
+          saveUserWishlist(userId, wishlistData);
+        } else {
+          saveLocalWishlist(wishlistData);
+        }
       } else {
         toast.info(`${product.name} is already in your wishlist`);
       }
     },
 
     removeFromWishlist: (state, action) => {
-      const productId = action.payload;
+      const productId = typeof action.payload === 'object' ? action.payload.productId : action.payload;
+      const userId = typeof action.payload === 'object' ? action.payload.userId : null;
       const itemIndex = state.items.findIndex(item => item.id === productId);
       
       if (itemIndex !== -1) {
@@ -103,17 +110,28 @@ const wishlistSlice = createSlice({
         state.items.splice(itemIndex, 1);
         toast.success(`${item.name} removed from wishlist`);
         
-        // Auto-save to localStorage
-        saveLocalWishlist({ items: state.items });
+        // Save to Firebase for logged-in users, localStorage for guests
+        const wishlistData = { items: state.items };
+        if (userId) {
+          saveUserWishlist(userId, wishlistData);
+        } else {
+          saveLocalWishlist(wishlistData);
+        }
       }
     },
 
-    clearWishlist: (state) => {
+    clearWishlist: (state, action) => {
+      const userId = action.payload?.userId;
       state.items = [];
       toast.success('Wishlist cleared');
       
-      // Auto-save to localStorage
-      saveLocalWishlist({ items: [] });
+      // Save to Firebase for logged-in users, localStorage for guests
+      const wishlistData = { items: [] };
+      if (userId) {
+        saveUserWishlist(userId, wishlistData);
+      } else {
+        saveLocalWishlist(wishlistData);
+      }
     },
 
     clearError: (state) => {

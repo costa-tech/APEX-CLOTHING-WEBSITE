@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { clearCart } from '../store/slices/cartSlice';
@@ -7,12 +7,14 @@ import { FiTag, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { validateCoupon } from '../utils/couponAPI';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { items, total, itemCount } = useSelector(state => state.cart);
-  const { user } = useSelector(state => state.auth);
+  const { user, isAuthenticated } = useSelector(state => state.auth);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState('');
@@ -31,22 +33,11 @@ const Checkout = () => {
     zipCode: '',
     phone: '',
     
-    // Billing Information
-    billingAddress: '',
-    billingApartment: '',
-    billingCity: '',
-    billingState: '',
-    billingZipCode: '',
-    
     // Payment Information
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardName: '',
+    paymentMethod: 'cod', // 'cod' or 'bank_transfer'
     
     // Options
     saveInfo: false,
-    differentBilling: false,
     shippingMethod: 'standard'
   });
   const [errors, setErrors] = useState({});
@@ -56,6 +47,44 @@ const Checkout = () => {
     { id: 'express', name: 'Express Shipping', time: '2-3 business days', price: 15.99 },
     { id: 'overnight', name: 'Overnight Shipping', time: 'Next business day', price: 29.99 }
   ];
+
+  // Load user profile data and auto-fill form if user is logged in
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (isAuthenticated && user?.uid) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            
+            // Auto-fill form with user's saved information
+            setFormData(prev => ({
+              ...prev,
+              email: userData.email || user.email || prev.email,
+              firstName: userData.firstName || userData.displayName?.split(' ')[0] || prev.firstName,
+              lastName: userData.lastName || userData.displayName?.split(' ')[1] || prev.lastName,
+              phone: userData.phone || prev.phone,
+              address: userData.address || prev.address,
+              apartment: userData.apartment || prev.apartment,
+              city: userData.city || prev.city,
+              state: userData.state || prev.state,
+              zipCode: userData.zipCode || prev.zipCode,
+              company: userData.company || prev.company,
+            }));
+            
+            console.log('✅ Auto-filled checkout form with user profile data');
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+          // Continue with checkout even if profile load fails
+        }
+      }
+    };
+
+    loadUserProfile();
+  }, [isAuthenticated, user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -86,7 +115,7 @@ const Checkout = () => {
       
       if (response.status === 'success') {
         setAppliedCoupon(response.data);
-        toast.success(`Coupon "${response.data.code}" applied! You saved $${response.data.discountAmount.toFixed(2)}`);
+        toast.success(`Coupon "${response.data.code}" applied! You saved Rs. ${response.data.discountAmount.toFixed(2)}`);
       }
     } catch (error) {
       console.error('Coupon validation error:', error);
@@ -108,8 +137,7 @@ const Checkout = () => {
 
     // Required fields
     const requiredFields = [
-      'firstName', 'lastName', 'address', 'city', 'state', 'zipCode', 'phone',
-      'cardNumber', 'expiryDate', 'cvv', 'cardName'
+      'firstName', 'lastName', 'address', 'city', 'state', 'zipCode', 'phone'
     ];
 
     requiredFields.forEach(field => {
@@ -130,13 +158,9 @@ const Checkout = () => {
       newErrors.phone = 'Phone number must be in format (123) 456-7890';
     }
 
-    // Card validation
-    if (formData.cardNumber && formData.cardNumber.replace(/\s/g, '').length !== 16) {
-      newErrors.cardNumber = 'Card number must be 16 digits';
-    }
-
-    if (formData.expiryDate && !/^\d{2}\/\d{2}$/.test(formData.expiryDate)) {
-      newErrors.expiryDate = 'Expiry date must be in MM/YY format';
+    // Payment method validation
+    if (!formData.paymentMethod) {
+      newErrors.paymentMethod = 'Please select a payment method';
     }
 
     if (formData.cvv && formData.cvv.length !== 3) {
@@ -157,29 +181,6 @@ const Checkout = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiryDate = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
-
   const formatPhone = (value) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     if (v.length >= 6) {
@@ -188,16 +189,6 @@ const Checkout = () => {
       return `(${v.substring(0, 3)}) ${v.substring(3)}`;
     }
     return v;
-  };
-
-  const handleCardNumberChange = (e) => {
-    const formatted = formatCardNumber(e.target.value);
-    setFormData(prev => ({ ...prev, cardNumber: formatted }));
-  };
-
-  const handleExpiryChange = (e) => {
-    const formatted = formatExpiryDate(e.target.value);
-    setFormData(prev => ({ ...prev, expiryDate: formatted }));
   };
 
   const handlePhoneChange = (e) => {
@@ -233,21 +224,105 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Save user information if they're logged in and checked "Save Info"
+      if (isAuthenticated && user?.uid && formData.saveInfo) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          await getDoc(userDocRef).then(async (docSnap) => {
+            const updateData = {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              phone: formData.phone,
+              address: formData.address,
+              apartment: formData.apartment,
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              company: formData.company,
+              updatedAt: new Date().toISOString(),
+            };
+
+            if (docSnap.exists()) {
+              // Update existing document
+              const { updateDoc } = await import('firebase/firestore');
+              await updateDoc(userDocRef, updateData);
+            } else {
+              // Create new document
+              const { setDoc } = await import('firebase/firestore');
+              await setDoc(userDocRef, {
+                ...updateData,
+                email: user.email,
+                role: 'customer',
+                createdAt: new Date().toISOString(),
+              });
+            }
+          });
+          console.log('✅ Saved user information to profile');
+        } catch (error) {
+          console.error('Error saving user info:', error);
+          // Don't block checkout if save fails
+        }
+      }
+
+      // Create order object
+      const orderData = {
+        orderNumber: `ORD-${Date.now()}`,
+        userId: user?.uid || null,
+        customerInfo: {
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+        },
+        shippingAddress: {
+          address: formData.address,
+          apartment: formData.apartment,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+        },
+        items: items.map(item => ({
+          productId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          image: item.image,
+        })),
+        paymentMethod: formData.paymentMethod,
+        paymentStatus: formData.paymentMethod === 'cod' ? 'pending' : 'awaiting_confirmation',
+        shippingMethod: formData.shippingMethod,
+        subtotal: total,
+        shippingCost: calculateShippingCost(),
+        tax: calculateTax(),
+        discount: appliedCoupon ? appliedCoupon.discountAmount : 0,
+        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        total: calculateTotal(),
+        orderStatus: 'processing',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save order to Firestore
+      const { collection, addDoc } = await import('firebase/firestore');
+      const ordersRef = collection(db, 'orders');
+      await addDoc(ordersRef, orderData);
       
-      // Clear cart
-      dispatch(clearCart());
+      // Clear cart (pass userId if logged in)
+      dispatch(clearCart({ userId: user?.uid }));
       
       // Show success message
-      toast.success('Order placed successfully!');
+      if (formData.paymentMethod === 'cod') {
+        toast.success('Order placed! Pay cash on delivery.');
+      } else {
+        toast.success('Order received! Please complete bank transfer.');
+      }
       
       // Redirect to order success page
       navigate('/order-success', { 
         state: { 
-          orderNumber: `ORD-${Date.now()}`,
-          total: calculateTotal(),
-          items: items
+          ...orderData,
+          paymentMethod: formData.paymentMethod,
         }
       });
       
@@ -277,7 +352,30 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Checkout</h1>
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                ✓ Logged in as {user.email}
+              </span>
+              <span className="text-gray-500">• Your information will be auto-filled</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Guest Checkout
+              </span>
+              <span className="text-gray-500">• Have an account?</span>
+              <button
+                onClick={() => navigate('/login', { state: { from: '/checkout' } })}
+                className="text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Sign in
+              </button>
+            </div>
+          )}
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Checkout Form */}
@@ -465,6 +563,23 @@ const Checkout = () => {
                   />
                   {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
                 </div>
+
+                {/* Save Info Checkbox - Only for logged-in users */}
+                {isAuthenticated && (
+                  <div className="mt-4 flex items-center">
+                    <input
+                      type="checkbox"
+                      id="saveInfo"
+                      name="saveInfo"
+                      checked={formData.saveInfo}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="saveInfo" className="ml-2 block text-sm text-gray-700">
+                      Save this information for next time
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Shipping Method */}
@@ -488,7 +603,7 @@ const Checkout = () => {
                             <p className="text-sm text-gray-600">{method.time}</p>
                           </div>
                           <p className="font-medium text-gray-900">
-                            {method.price === 0 ? 'Free' : `$${method.price}`}
+                            {method.price === 0 ? 'Free' : `Rs. ${method.price}`}
                           </p>
                         </div>
                       </div>
@@ -497,91 +612,93 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {/* Payment Information */}
+              {/* Payment Method */}
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <HiOutlineCreditCard className="w-5 h-5 mr-2" />
-                  Payment Information
+                  Payment Method
                 </h2>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                      Card Number *
-                    </label>
+                <div className="space-y-3">
+                  {/* Cash on Delivery */}
+                  <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                     <input
-                      type="text"
-                      id="cardNumber"
-                      name="cardNumber"
-                      value={formData.cardNumber}
-                      onChange={handleCardNumberChange}
-                      maxLength="19"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
-                        errors.cardNumber ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      placeholder="1234 5678 9012 3456"
-                    />
-                    {errors.cardNumber && <p className="mt-1 text-sm text-red-600">{errors.cardNumber}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                        Expiry Date *
-                      </label>
-                      <input
-                        type="text"
-                        id="expiryDate"
-                        name="expiryDate"
-                        value={formData.expiryDate}
-                        onChange={handleExpiryChange}
-                        maxLength="5"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
-                          errors.expiryDate ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="MM/YY"
-                      />
-                      {errors.expiryDate && <p className="mt-1 text-sm text-red-600">{errors.expiryDate}</p>}
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-1">
-                        CVV *
-                      </label>
-                      <input
-                        type="text"
-                        id="cvv"
-                        name="cvv"
-                        value={formData.cvv}
-                        onChange={handleChange}
-                        maxLength="3"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
-                          errors.cvv ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="123"
-                      />
-                      {errors.cvv && <p className="mt-1 text-sm text-red-600">{errors.cvv}</p>}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="cardName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Cardholder Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="cardName"
-                      name="cardName"
-                      value={formData.cardName}
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      checked={formData.paymentMethod === 'cod'}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${
-                        errors.cardName ? 'border-red-300' : 'border-gray-300'
-                      }`}
-                      placeholder="Name on card"
+                      className="h-4 w-4 text-black focus:ring-black border-gray-300 mt-1"
                     />
-                    {errors.cardName && <p className="mt-1 text-sm text-red-600">{errors.cardName}</p>}
-                  </div>
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">Cash on Delivery</p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          Popular
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Pay with cash when your order is delivered to your doorstep
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Bank Transfer */}
+                  <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="bank_transfer"
+                      checked={formData.paymentMethod === 'bank_transfer'}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-black focus:ring-black border-gray-300 mt-1"
+                    />
+                    <div className="ml-3 flex-1">
+                      <p className="font-medium text-gray-900">Bank Transfer</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Transfer payment directly to our bank account
+                      </p>
+                    </div>
+                  </label>
+
+                  {errors.paymentMethod && (
+                    <p className="text-sm text-red-600">{errors.paymentMethod}</p>
+                  )}
                 </div>
+
+                {/* Bank Details - Show only when bank transfer is selected */}
+                {formData.paymentMethod === 'bank_transfer' && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <HiOutlineShieldCheck className="w-5 h-5 mr-2 text-blue-600" />
+                      Bank Account Details
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Bank Name:</span>
+                        <span className="font-medium text-gray-900">Commercial Bank of Ceylon</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account Name:</span>
+                        <span className="font-medium text-gray-900">Clothing Brand (Pvt) Ltd</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account Number:</span>
+                        <span className="font-medium text-gray-900 font-mono">1234567890</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Branch:</span>
+                        <span className="font-medium text-gray-900">Colombo Main Branch</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-xs text-gray-600">
+                        <strong>Note:</strong> Please use your order number as the payment reference. 
+                        Your order will be processed after payment confirmation (usually within 24 hours).
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
@@ -626,7 +743,7 @@ const Checkout = () => {
                       <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      Rs. {(item.price * item.quantity).toFixed(2)}
                     </p>
                   </div>
                 ))}
@@ -676,7 +793,7 @@ const Checkout = () => {
                             Coupon "{appliedCoupon.code}" Applied
                           </p>
                           <p className="text-xs text-green-700">
-                            You saved ${appliedCoupon.discountAmount.toFixed(2)}!
+                            You saved Rs. {appliedCoupon.discountAmount.toFixed(2)}!
                           </p>
                         </div>
                       </div>
@@ -696,29 +813,29 @@ const Checkout = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal ({itemCount} items)</span>
-                  <span className="font-medium">${total.toFixed(2)}</span>
+                  <span className="font-medium">Rs. {total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
                   <span className="font-medium">
-                    {calculateShippingCost() === 0 ? 'Free' : `$${calculateShippingCost().toFixed(2)}`}
+                    {calculateShippingCost() === 0 ? 'Free' : `Rs. ${calculateShippingCost().toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">${calculateTax().toFixed(2)}</span>
+                  <span className="font-medium">Rs. {calculateTax().toFixed(2)}</span>
                 </div>
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span className="font-medium">Discount ({appliedCoupon.code})</span>
-                    <span className="font-medium">-${appliedCoupon.discountAmount.toFixed(2)}</span>
+                    <span className="font-medium">-Rs. {appliedCoupon.discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between">
                     <span className="text-lg font-semibold text-gray-900">Total</span>
                     <span className="text-lg font-semibold text-gray-900">
-                      ${calculateTotal().toFixed(2)}
+                      Rs. {calculateTotal().toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -744,3 +861,4 @@ const Checkout = () => {
 };
 
 export default Checkout;
+
