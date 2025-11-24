@@ -281,21 +281,7 @@ const Hero3D = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
                 </motion.div>
 
-                {/* Floating Elements */}
-                <motion.div
-                  className="absolute -top-4 -right-4 w-24 h-24 bg-white dark:bg-gray-700 rounded-full shadow-xl flex items-center justify-center"
-                  animate={{ 
-                    rotate: 360,
-                    y: [0, -10, 0]
-                  }}
-                  transition={{ 
-                    rotate: { duration: 20, repeat: Infinity, ease: 'linear' },
-                    y: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-                  }}
-                  whileHover={{ scale: 1.1 }}
-                >
-                  <span className="text-2xl">✨</span>
-                </motion.div>
+
 
                 <motion.div
                   className="absolute -bottom-4 -left-4 w-20 h-20 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-xl flex items-center justify-center font-bold"
