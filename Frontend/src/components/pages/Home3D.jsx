@@ -10,7 +10,7 @@ import Hero3D from '../ui/Hero3D';
 import ProductGrid3D from '../ui/ProductGrid3D';
 import About3D from '../ui/About3D';
 import Testimonials3D from '../ui/Testimonials3D';
-import Newsletter from '../ui/Newsletter';
+
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 const Home3D = () => {
@@ -366,11 +366,7 @@ const Home3D = () => {
       {/* Testimonials with 3D Cards */}
       <Testimonials3D />
 
-      {/* Newsletter with enhanced styling */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-blue-900/20 dark:from-purple-900/30 dark:to-blue-900/30" />
-        <Newsletter />
-      </div>
+
     </div>
   );
 };
