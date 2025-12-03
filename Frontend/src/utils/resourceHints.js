@@ -144,8 +144,8 @@ class ResourceHintsManager {
       // Adjust strategy based on connection quality
       if (connection.effectiveType === '4g' && !connection.saveData) {
         // Aggressive preloading on fast connections
-        this.preloadAPI('/api/products/featured', 'Featured products');
-        this.preloadAPI('/api/categories', 'Categories');
+        this.preloadAPI('/api/v1/products/featured', 'Featured products');
+        this.preloadAPI('/api/v1/categories', 'Categories');
         console.log('🚀 Aggressive preloading enabled (4G connection)');
       } else if (connection.saveData) {
         // Minimal preloading on data saver mode
