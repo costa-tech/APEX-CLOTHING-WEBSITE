@@ -36,14 +36,14 @@ const Testimonials3D = () => {
     <section ref={ref} className="py-20 lg:py-32 relative overflow-hidden">
       {/* Background with animated gradients */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
         <motion.div
           className="absolute top-0 left-0 w-full h-full opacity-30"
           animate={{
             background: [
-              "radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%)",
-              "radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.3) 0%, transparent 50%)",
+              "radial-gradient(circle at 20% 80%, rgba(100, 100, 100, 0.1) 0%, transparent 50%)",
+              "radial-gradient(circle at 80% 20%, rgba(50, 50, 50, 0.1) 0%, transparent 50%)",
+              "radial-gradient(circle at 40% 40%, rgba(100, 100, 100, 0.1) 0%, transparent 50%)",
             ],
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
@@ -52,7 +52,7 @@ const Testimonials3D = () => {
 
       {/* Floating elements */}
       <motion.div
-        className="absolute top-20 left-10 w-20 h-20 border border-purple-200 rounded-full"
+        className="absolute top-20 left-10 w-20 h-20 border border-gray-300 rounded-full"
         animate={{
           y: [0, -20, 0],
           rotate: [0, 360],
@@ -60,7 +60,7 @@ const Testimonials3D = () => {
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-20 right-10 w-16 h-16 bg-gradient-to-r from-purple-200 to-blue-200 rounded-full blur-sm"
+        className="absolute bottom-20 right-10 w-16 h-16 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full blur-sm"
         animate={{
           y: [0, 15, 0],
           scale: [1, 1.2, 1],
@@ -77,7 +77,13 @@ const Testimonials3D = () => {
           transition={{ duration: 0.8 }}
         >
           <motion.h2 
-            className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-purple-900 to-blue-900 bg-clip-text text-transparent"
+            className="text-4xl lg:text-6xl font-bold mb-6 text-transparent bg-clip-text"
+            style={{
+              background: 'linear-gradient(135deg, #000000 0%, #434343 50%, #000000 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={inView ? { opacity: 1, scale: 1 } : {}}
             transition={{ duration: 1, delay: 0.2 }}
@@ -85,7 +91,10 @@ const Testimonials3D = () => {
             What Our Customers Say
           </motion.h2>
           <motion.div 
-            className="w-24 h-1 bg-gradient-to-r from-purple-600 to-blue-600 mx-auto mb-6 rounded-full"
+            className="w-24 h-1 mx-auto mb-6 rounded-full"
+            style={{
+              background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+            }}
             initial={{ width: 0 }}
             animate={inView ? { width: 96 } : {}}
             transition={{ duration: 1, delay: 0.5 }}
@@ -125,7 +134,7 @@ const Testimonials3D = () => {
               {/* Card Background with 3D effect */}
               <div className="relative p-8 bg-white rounded-2xl shadow-lg group-hover:shadow-2xl transition-all duration-300 transform-gpu">
                 {/* Gradient border effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                <div className="absolute inset-0 bg-gradient-to-r from-black to-gray-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
                      style={{ padding: '2px' }}>
                   <div className="bg-white rounded-2xl w-full h-full" />
                 </div>
@@ -171,14 +180,14 @@ const Testimonials3D = () => {
                       <img
                         src={testimonial.avatar}
                         alt={testimonial.name}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 group-hover:border-purple-400 transition-colors duration-300"
+                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 group-hover:border-black transition-colors duration-300"
                       />
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-black to-gray-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                     </motion.div>
                     
                     <div className="ml-4">
                       <motion.h4 
-                        className="font-semibold text-gray-900 group-hover:text-purple-900 transition-colors duration-300"
+                        className="font-semibold text-gray-900 group-hover:text-black transition-colors duration-300"
                         initial={{ opacity: 0, x: -20 }}
                         animate={inView ? { opacity: 1, x: 0 } : {}}
                         transition={{ duration: 0.5, delay: 0.7 + (0.1 * index) }}
@@ -199,7 +208,7 @@ const Testimonials3D = () => {
 
                 {/* Floating elements for each card */}
                 <motion.div
-                  className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-0 group-hover:opacity-100"
+                  className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full opacity-0 group-hover:opacity-100"
                   animate={{
                     scale: [1, 1.5, 1],
                     rotate: [0, 180, 360],
@@ -227,13 +236,16 @@ const Testimonials3D = () => {
             Ready to join the APEX community?
           </motion.p>
           <motion.button
-            className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full overflow-hidden shadow-xl"
+            className="group relative px-8 py-4 text-white font-semibold rounded-full overflow-hidden shadow-xl"
+            style={{
+              background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+            }}
             whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"
             />
             <span className="relative z-10">Start Your Journey</span>
             <motion.div
