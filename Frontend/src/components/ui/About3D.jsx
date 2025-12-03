@@ -45,7 +45,7 @@ const About3D = () => {
         
         {/* Floating geometric shapes */}
         <motion.div
-          className="absolute top-20 left-20 w-32 h-32 border border-purple-500/30 rounded-full"
+          className="absolute top-20 left-20 w-32 h-32 border border-white/30 rounded-full"
           animate={{
             rotate: [0, 360],
             scale: [1, 1.2, 1],
@@ -53,7 +53,7 @@ const About3D = () => {
           transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
         />
         <motion.div
-          className="absolute bottom-20 right-20 w-24 h-24 bg-gradient-to-r from-purple-600/20 to-blue-600/20 transform rotate-45"
+          className="absolute bottom-20 right-20 w-24 h-24 bg-gradient-to-r from-gray-600/20 to-gray-800/20 transform rotate-45"
           animate={{
             rotate: [45, 405],
             y: [0, -20, 0],
@@ -87,7 +87,13 @@ const About3D = () => {
               <h2 className="text-4xl lg:text-6xl font-bold text-white leading-tight mb-6">
                 The Science of
                 <motion.span 
-                  className="block bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
+                  className="block text-transparent bg-clip-text"
+                  style={{
+                    background: 'linear-gradient(135deg, #ffffff 0%, #d1d5db 50%, #ffffff 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}
                   initial={{ opacity: 0 }}
                   animate={inView ? { opacity: 1 } : {}}
                   transition={{ duration: 1, delay: 0.5 }}
@@ -96,7 +102,10 @@ const About3D = () => {
                 </motion.span>
               </h2>
               <motion.div 
-                className="w-24 h-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full mb-8"
+                className="w-24 h-1 rounded-full mb-8"
+                style={{
+                  background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+                }}
                 initial={{ width: 0 }}
                 animate={inView ? { width: 96 } : {}}
                 transition={{ duration: 1, delay: 0.7 }}
@@ -126,7 +135,7 @@ const About3D = () => {
               {features.map((feature, index) => (
                 <motion.div
                   key={index}
-                  className="group relative p-6 rounded-xl border border-gray-800 hover:border-purple-500/50 transition-all duration-300"
+                  className="group relative p-6 rounded-xl border border-gray-800 hover:border-white/50 transition-all duration-300"
                   initial={{ opacity: 0, y: 30, scale: 0.9 }}
                   animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
                   transition={{ duration: 0.6, delay: 0.8 + (0.1 * index) }}
@@ -137,7 +146,7 @@ const About3D = () => {
                   }}
                 >
                   {/* Glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-blue-600/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-gray-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   
                   <div className="relative z-10">
                     <motion.div 
@@ -147,7 +156,7 @@ const About3D = () => {
                     >
                       {feature.icon}
                     </motion.div>
-                    <h4 className="text-white font-semibold mb-2 group-hover:text-purple-300 transition-colors duration-300">
+                    <h4 className="text-white font-semibold mb-2 group-hover:text-white transition-colors duration-300">
                       {feature.title}
                     </h4>
                     <p className="text-gray-400 text-sm leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
@@ -185,35 +194,35 @@ const About3D = () => {
                 />
                 
                 {/* Overlay with gradient */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-purple-900/60 via-transparent to-blue-900/60" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-gray-900/60 via-transparent to-black/60" />
                 
                 {/* Floating tech elements */}
                 <motion.div
-                  className="absolute top-8 right-8 bg-black/70 backdrop-blur-sm rounded-lg p-4 border border-purple-500/30"
+                  className="absolute top-8 right-8 bg-black/70 backdrop-blur-sm rounded-lg p-4 border border-white/30"
                   initial={{ opacity: 0, scale: 0 }}
                   animate={inView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.8, delay: 1 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-purple-400 text-sm font-mono">MOISTURE-WICK</div>
-                  <div className="text-white text-xs">99.8% Efficiency</div>
+                  <div className="text-white text-sm font-mono">MOISTURE-WICK</div>
+                  <div className="text-gray-300 text-xs">99.8% Efficiency</div>
                 </motion.div>
 
                 <motion.div
-                  className="absolute bottom-8 left-8 bg-black/70 backdrop-blur-sm rounded-lg p-4 border border-blue-500/30"
+                  className="absolute bottom-8 left-8 bg-black/70 backdrop-blur-sm rounded-lg p-4 border border-gray-500/30"
                   initial={{ opacity: 0, scale: 0 }}
                   animate={inView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.8, delay: 1.2 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  <div className="text-blue-400 text-sm font-mono">BREATHABILITY</div>
+                  <div className="text-gray-300 text-sm font-mono">BREATHABILITY</div>
                   <div className="text-white text-xs">Advanced Airflow</div>
                 </motion.div>
               </div>
 
               {/* Orbiting elements */}
               <motion.div
-                className="absolute -top-6 -left-6 w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full shadow-lg"
+                className="absolute -top-6 -left-6 w-12 h-12 bg-gradient-to-r from-white to-gray-500 rounded-full shadow-lg"
                 animate={{
                   rotate: [0, 360],
                   scale: [1, 1.2, 1],
@@ -222,7 +231,7 @@ const About3D = () => {
               />
               
               <motion.div
-                className="absolute -bottom-6 -right-6 w-16 h-16 border-2 border-purple-400 rounded-full"
+                className="absolute -bottom-6 -right-6 w-16 h-16 border-2 border-white rounded-full"
                 animate={{
                   rotate: [0, -360],
                   scale: [1, 0.8, 1],
@@ -232,7 +241,7 @@ const About3D = () => {
 
               {/* Data visualization lines */}
               <motion.div
-                className="absolute top-1/2 -right-8 w-24 h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent"
+                className="absolute top-1/2 -right-8 w-24 h-0.5 bg-gradient-to-r from-transparent via-white to-transparent"
                 animate={{
                   scaleX: [0, 1, 0],
                   opacity: [0, 1, 0],
@@ -274,28 +283,31 @@ const About3D = () => {
             transition={{ duration: 0.8, delay: 2.1 }}
           >
             <motion.button
-              className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-full overflow-hidden shadow-xl"
-              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(147, 51, 234, 0.4)" }}
+              className="group relative px-8 py-4 text-white font-semibold rounded-full overflow-hidden shadow-xl"
+              style={{
+                background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+              }}
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)" }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-300"
               />
               <span className="relative z-10">Shop Collection</span>
             </motion.button>
             
             <motion.button
-              className="group relative px-8 py-4 border-2 border-purple-400 text-purple-400 font-semibold rounded-full overflow-hidden transition-all duration-300 hover:text-white"
+              className="group relative px-8 py-4 border-2 border-white text-white font-semibold rounded-full overflow-hidden transition-all duration-300 hover:text-black"
               whileHover={{ 
                 scale: 1.05,
                 borderColor: "#ffffff",
-                color: "#ffffff"
+                color: "#000000"
               }}
               whileTap={{ scale: 0.95 }}
             >
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="absolute inset-0 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 initial={{ x: "-100%" }}
                 whileHover={{ x: "0%" }}
                 transition={{ duration: 0.3 }}
