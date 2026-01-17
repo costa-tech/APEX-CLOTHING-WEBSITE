@@ -10,7 +10,7 @@ import Hero3D from '../ui/Hero3D';
 import ProductGrid3D from '../ui/ProductGrid3D';
 import About3D from '../ui/About3D';
 import Testimonials3D from '../ui/Testimonials3D';
-import Newsletter from '../ui/Newsletter';
+
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 const Home3D = () => {
@@ -116,9 +116,9 @@ const Home3D = () => {
       {/* New Arrivals Section */}
       <section className="py-20 lg:py-32 relative overflow-hidden">
         {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900/10" />
-        <div className="absolute top-20 left-10 w-32 h-32 bg-purple-200/20 dark:bg-purple-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-40 h-40 bg-blue-200/20 dark:bg-blue-600/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/10" />
+        <div className="absolute top-20 left-10 w-32 h-32 bg-gray-200/20 dark:bg-gray-600/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-gray-200/20 dark:bg-gray-600/10 rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
@@ -128,11 +128,22 @@ const Home3D = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-purple-900 to-blue-900 dark:from-white dark:via-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+            <h2 
+              className="text-4xl lg:text-6xl font-bold mb-6 text-transparent bg-clip-text"
+              style={{
+                background: 'linear-gradient(135deg, #000000 0%, #434343 50%, #000000 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}
+            >
               New Arrivals
             </h2>
             <motion.div 
-              className="w-24 h-1 bg-gradient-to-r from-purple-600 to-blue-600 mx-auto mb-6 rounded-full"
+              className="w-24 h-1 mx-auto mb-6 rounded-full"
+              style={{
+                background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+              }}
               initial={{ width: 0 }}
               whileInView={{ width: 96 }}
               viewport={{ once: true }}
@@ -154,14 +165,14 @@ const Home3D = () => {
       <section ref={storyRef} className="py-20 lg:py-32 relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900 to-black" />
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-900 to-black" />
           <motion.div
             className="absolute top-0 left-0 w-full h-full opacity-30"
             animate={{
               background: [
-                "radial-gradient(circle at 20% 80%, purple 0%, transparent 50%)",
-                "radial-gradient(circle at 80% 20%, blue 0%, transparent 50%)",
-                "radial-gradient(circle at 40% 40%, purple 0%, transparent 50%)",
+                "radial-gradient(circle at 20% 80%, rgba(100,100,100,0.2) 0%, transparent 50%)",
+                "radial-gradient(circle at 80% 20%, rgba(50,50,50,0.2) 0%, transparent 50%)",
+                "radial-gradient(circle at 40% 40%, rgba(100,100,100,0.2) 0%, transparent 50%)",
               ],
             }}
             transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
@@ -184,7 +195,13 @@ const Home3D = () => {
               >
                 Built for Those Who
                 <motion.span 
-                  className="block bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent"
+                  className="block text-transparent bg-clip-text"
+                  style={{
+                    background: 'linear-gradient(135deg, #ffffff 0%, #d1d5db 50%, #ffffff 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}
                   initial={{ opacity: 0 }}
                   animate={storyInView ? { opacity: 1 } : {}}
                   transition={{ duration: 1, delay: 0.5 }}
@@ -221,16 +238,16 @@ const Home3D = () => {
               >
                 <Link to="/about">
                   <motion.button
-                    className="group relative px-8 py-4 border-2 border-purple-400 text-purple-400 font-semibold rounded-full overflow-hidden transition-all duration-300 hover:text-white"
+                    className="group relative px-8 py-4 border-2 border-white text-white font-semibold rounded-full overflow-hidden transition-all duration-300 hover:text-black"
                     whileHover={{ 
                       scale: 1.05,
                       borderColor: "#ffffff",
-                      color: "#ffffff"
+                      color: "#000000"
                     }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      className="absolute inset-0 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       initial={{ x: "-100%" }}
                       whileHover={{ x: "0%" }}
                       transition={{ duration: 0.3 }}
@@ -262,11 +279,11 @@ const Home3D = () => {
                   alt="Brand Story"
                   className="w-full h-[500px] lg:h-[600px] object-cover rounded-2xl shadow-2xl"
                 />
-                <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/30 to-blue-600/30 rounded-2xl" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-gray-600/30 to-black/30 rounded-2xl" />
                 
                 {/* Floating Elements */}
                 <motion.div
-                  className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full"
+                  className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-white to-gray-400 rounded-full"
                   animate={{
                     y: [0, -10, 0],
                     rotate: [0, 180, 360],
@@ -274,7 +291,7 @@ const Home3D = () => {
                   transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
                 />
                 <motion.div
-                  className="absolute -bottom-4 -left-4 w-12 h-12 border-2 border-purple-400 rounded-full"
+                  className="absolute -bottom-4 -left-4 w-12 h-12 border-2 border-white rounded-full"
                   animate={{
                     scale: [1, 1.2, 1],
                     rotate: [0, -180, -360],
@@ -310,7 +327,12 @@ const Home3D = () => {
             <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
               Trusted by Millions
             </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-600 to-blue-600 mx-auto rounded-full" />
+            <div 
+              className="w-24 h-1 mx-auto rounded-full"
+              style={{
+                background: 'linear-gradient(135deg, #000000 0%, #434343 100%)'
+              }}
+            />
           </motion.div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -342,7 +364,7 @@ const Home3D = () => {
                   transition={{ duration: 0.6 }}
                   style={{ perspective: "1000px" }}
                 >
-                  <div className="text-5xl lg:text-7xl font-black mb-4 bg-gradient-to-r from-white to-gray-300 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent group-hover:from-purple-400 group-hover:to-blue-400 transition-all duration-300">
+                  <div className="text-5xl lg:text-7xl font-black mb-4 bg-gradient-to-r from-white to-gray-300 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent group-hover:from-white group-hover:to-gray-400 transition-all duration-300">
                     {stat.number}
                   </div>
                 </motion.div>
@@ -352,7 +374,7 @@ const Home3D = () => {
                 
                 {/* Glow Effect */}
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"
+                  className="absolute inset-0 bg-gradient-to-r from-white/10 to-gray-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"
                   initial={{ scale: 0 }}
                   whileHover={{ scale: 1.2 }}
                 />
@@ -366,11 +388,7 @@ const Home3D = () => {
       {/* Testimonials with 3D Cards */}
       <Testimonials3D />
 
-      {/* Newsletter with enhanced styling */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 to-blue-900/20 dark:from-purple-900/30 dark:to-blue-900/30" />
-        <Newsletter />
-      </div>
+
     </div>
   );
 };
