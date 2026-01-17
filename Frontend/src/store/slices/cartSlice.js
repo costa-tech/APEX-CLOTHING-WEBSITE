@@ -14,9 +14,14 @@ export const fetchCart = createAsyncThunk(
   'cart/fetchCart',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('🔄 Fetching cart from backend...');
       const response = await cartAPI.getCart();
+      console.log('📦 Cart API response:', response);
+      console.log('📦 Cart data:', response.cart);
       return response.cart;
     } catch (error) {
+      console.error('❌ fetchCart error:', error);
+      console.error('❌ Error response:', error.response);
       // Silently fail if cart endpoint doesn't exist (404)
       if (error.response?.status === 404) {
         return rejectWithValue('cart_not_available');
@@ -30,9 +35,13 @@ export const addToCartAsync = createAsyncThunk(
   'cart/addToCart',
   async (cartData, { rejectWithValue }) => {
     try {
+      console.log('🛒 Adding to cart:', cartData);
       const response = await cartAPI.addToCart(cartData);
+      console.log('✅ Add to cart response:', response);
       return response.cart;
     } catch (error) {
+      console.error('❌ Add to cart error:', error);
+      console.error('❌ Error response:', error.response);
       return rejectWithValue(error.response?.data?.message || 'Failed to add to cart');
     }
   }
@@ -256,22 +265,26 @@ const cartSlice = createSlice({
       .addCase(fetchCart.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })      .addCase(fetchCart.fulfilled, (state, action) => {
+        console.log('⏳ fetchCart.pending - starting cart fetch');
+      })
+      .addCase(fetchCart.fulfilled, (state, action) => {
         state.isLoading = false;
-        console.log('Fetch cart response:', action.payload);
+        console.log('✅ fetchCart.fulfilled - action.payload:', action.payload);
         
         if (action.payload && action.payload.items) {
+          console.log('📦 Setting cart items:', action.payload.items.length, 'items');
           state.items = action.payload.items.map(item => ({
-            id: item.product._id,
-            name: item.product.name,
+            id: item.product?.id || item.product?._id || item.product_id,
+            name: item.product?.name || 'Unknown Product',
             price: item.price,
-            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
+            image: item.product?.images?.[0] || '/placeholder-image.jpg',
             size: item.size,
             color: item.color,
             quantity: item.quantity,
-            _id: item._id, // Backend item ID for updates/deletion
+            _id: item.id, // Backend item ID for updates/deletion
           }));
           cartSlice.caseReducers.calculateTotals(state);
+          console.log('✅ Cart state updated:', { itemCount: state.items.length, totalQuantity: state.totalQuantity, totalAmount: state.totalAmount });
         } else {
           // Handle empty cart or different response structure
           state.items = [];
@@ -290,20 +303,22 @@ const cartSlice = createSlice({
       .addCase(addToCartAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })      .addCase(addToCartAsync.fulfilled, (state, action) => {
+      })
+      .addCase(addToCartAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        console.log('Add to cart response:', action.payload);
+        console.log('✅ Add to cart response:', action.payload);
         
-        if (action.payload && action.payload.cart && action.payload.cart.items) {
-          state.items = action.payload.cart.items.map(item => ({
-            id: item.product._id,
-            name: item.product.name,
+        // The backend returns { status: 'success', message: '...', cart: { items: [...], totalQuantity: X, totalAmount: Y } }
+        if (action.payload && action.payload.items) {
+          state.items = action.payload.items.map(item => ({
+            id: item.product?.id || item.product?._id || item.product_id,
+            name: item.product?.name || 'Unknown Product',
             price: item.price,
-            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
+            image: item.product?.images?.[0] || '/placeholder-image.jpg',
             size: item.size,
             color: item.color,
             quantity: item.quantity,
-            _id: item._id,
+            _id: item.id,
           }));
           cartSlice.caseReducers.calculateTotals(state);
           toast.success('Item added to cart');
@@ -315,6 +330,7 @@ const cartSlice = createSlice({
       .addCase(addToCartAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        console.error('❌ Add to cart failed:', action.payload);
         toast.error(action.payload || 'Failed to add to cart');
       })
       // Update Cart Item

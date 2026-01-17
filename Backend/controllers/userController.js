@@ -181,7 +181,10 @@ exports.getProfile = async (req, res) => {
  */
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, address, avatar } = req.body;
+    const { name, phone, address, avatar, dateOfBirth, gender } = req.body;
+
+    console.log('💾 Updating profile for user:', req.user.uid);
+    console.log('📝 Profile data:', req.body);
 
     const updateData = {
       updatedAt: new Date().toISOString(),
@@ -191,10 +194,14 @@ exports.updateProfile = async (req, res) => {
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
     if (avatar) updateData.avatar = avatar;
+    if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+    if (gender) updateData.gender = gender;
 
     await usersCollection.doc(req.user.uid).update(updateData);
 
     const updatedDoc = await usersCollection.doc(req.user.uid).get();
+
+    console.log('✅ Profile updated successfully');
 
     res.status(200).json({
       status: 'success',
@@ -205,7 +212,7 @@ exports.updateProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error('❌ Update profile error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to update profile',

@@ -150,11 +150,12 @@ exports.getMyOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
 
+    console.log('📦 Fetching orders for user:', req.user.uid);
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const snapshot = await ordersCollection
       .where('userId', '==', req.user.uid)
-      .orderBy('orderDate', 'desc')
       .limit(parseInt(limit))
       .offset(skip)
       .get();
@@ -167,15 +168,25 @@ exports.getMyOrders = async (req, res) => {
       });
     });
 
+    // Sort orders by date in memory (to avoid Firestore index requirement)
+    orders.sort((a, b) => {
+      const dateA = new Date(a.orderDate || a.createdAt || 0);
+      const dateB = new Date(b.orderDate || b.createdAt || 0);
+      return dateB - dateA; // Descending order (newest first)
+    });
+
+    console.log('✅ Found', orders.length, 'orders');
+
     res.status(200).json({
       status: 'success',
       data: { orders },
     });
   } catch (error) {
-    console.error('Get my orders error:', error);
+    console.error('❌ Get my orders error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch orders',
+      error: error.message,
     });
   }
 };

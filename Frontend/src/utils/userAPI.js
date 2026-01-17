@@ -7,7 +7,7 @@ import api from './api';
  */
 export const getAllUsers = async (params = {}) => {
   try {
-    const response = await api.get('/v1/users', { params });
+    const response = await api.get('/users', { params });
     return response;
   } catch (error) {
     console.error('Get all users error:', error);
@@ -22,7 +22,7 @@ export const getAllUsers = async (params = {}) => {
  */
 export const getUserById = async (id) => {
   try {
-    const response = await api.get(`/v1/users/${id}`);
+    const response = await api.get(`/users/${id}`);
     return response;
   } catch (error) {
     console.error('Get user by ID error:', error);
@@ -38,7 +38,7 @@ export const getUserById = async (id) => {
  */
 export const updateUser = async (id, userData) => {
   try {
-    const response = await api.put(`/v1/users/${id}`, userData);
+    const response = await api.put(`/users/${id}`, userData);
     return response;
   } catch (error) {
     console.error('Update user error:', error);
@@ -53,7 +53,7 @@ export const updateUser = async (id, userData) => {
  */
 export const deleteUser = async (id) => {
   try {
-    const response = await api.delete(`/v1/users/${id}`);
+    const response = await api.delete(`/users/${id}`);
     return response;
   } catch (error) {
     console.error('Delete user error:', error);
@@ -69,7 +69,7 @@ export const deleteUser = async (id) => {
  */
 export const updateUserStatus = async (id, status) => {
   try {
-    const response = await api.patch(`/v1/users/${id}/status`, { status });
+    const response = await api.patch(`/users/${id}/status`, { status });
     return response;
   } catch (error) {
     console.error('Update user status error:', error);
@@ -85,7 +85,7 @@ export const updateUserStatus = async (id, status) => {
  */
 export const updateUserRole = async (id, role) => {
   try {
-    const response = await api.patch(`/v1/users/${id}/role`, { role });
+    const response = await api.patch(`/users/${id}/role`, { role });
     return response;
   } catch (error) {
     console.error('Update user role error:', error);
@@ -99,7 +99,7 @@ export const updateUserRole = async (id, role) => {
  */
 export const getUserStats = async () => {
   try {
-    const response = await api.get('/v1/users/stats/summary');
+    const response = await api.get('/users/stats/summary');
     return response;
   } catch (error) {
     console.error('Get user stats error:', error);
@@ -113,7 +113,7 @@ export const getUserStats = async () => {
  */
 export const getProfile = async () => {
   try {
-    const response = await api.get('/v1/users/profile');
+    const response = await api.get('/users/profile');
     return response;
   } catch (error) {
     console.error('Get profile error:', error);
@@ -128,7 +128,7 @@ export const getProfile = async () => {
  */
 export const updateProfile = async (profileData) => {
   try {
-    const response = await api.put('/v1/users/profile', profileData);
+    const response = await api.put('/users/profile', profileData);
     return response;
   } catch (error) {
     console.error('Update profile error:', error);

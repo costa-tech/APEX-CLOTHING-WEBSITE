@@ -1,87 +1,202 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../store/slices/authSlice';
+import { logout, updateUser } from '../store/slices/authSlice';
 import { HiOutlineUser, HiOutlineLocationMarker, HiOutlineHeart, HiOutlineCreditCard, HiOutlineLogout, HiOutlineEye, HiOutlineTruck } from 'react-icons/hi';
 import { toast } from 'react-toastify';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { updateProfile } from '../utils/userAPI';
+import api from '../utils/api';
+import { addToCartAsync } from '../store/slices/cartSlice';
+import { removeFromWishlistAsync } from '../store/slices/wishlistSlice';
 
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector(state => state.auth);
+  const { items: wishlistItems } = useSelector(state => state.wishlist);
   
   const [activeTab, setActiveTab] = useState('account');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: user?.name?.split(' ')[0] || '',
-    lastName: user?.name?.split(' ')[1] || '',
+    name: user?.name || '',
     email: user?.email || '',
-    phone: '',
-    dateOfBirth: '',
-    gender: ''
+    phone: user?.phone || '',
+    dateOfBirth: user?.dateOfBirth || '',
+    gender: user?.gender || '',
+    address: user?.address || {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    }
   });
 
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [wishlist, setWishlist] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  // Mock addresses
-  const addresses = [
-    {
-      id: 1,
-      type: 'Home',
-      name: 'John Doe',
-      address: '123 Main Street',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      isDefault: true
-    },
-    {
-      id: 2,
-      type: 'Work',
-      name: 'John Doe',
-      address: '456 Business Ave',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10002',
-      isDefault: false
+  // Load user data on mount
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: user.dateOfBirth || '',
+        gender: user.gender || '',
+        address: user.address || {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: ''
+        }
+      });
     }
-  ];
+  }, [user]);
 
-  // Mock wishlist
-  const wishlist = [
-    {
-      id: 1,
-      name: 'Elite Performance Tee',
-      price: 45.99,
-      originalPrice: 59.99,
-      image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1974&q=80',
-      inStock: true
-    },
-    {
-      id: 2,
-      name: 'Performance Hoodie',
-      price: 79.99,
-      image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1974&q=80',
-      inStock: false
+  // Fetch orders when orders tab is active
+  useEffect(() => {
+    if (activeTab === 'orders' && user) {
+      fetchOrders();
     }
-  ];
+  }, [activeTab, user]);
+
+  // Fetch wishlist when wishlist tab is active
+  useEffect(() => {
+    if (activeTab === 'wishlist' && user) {
+      fetchWishlist();
+    }
+  }, [activeTab, user]);
+
+  const fetchOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      console.log('📦 Fetching user orders...');
+      const response = await api.get('/orders/my-orders');
+      console.log('✅ Orders fetched:', response);
+      setOrders(response.data?.orders || []);
+    } catch (error) {
+      console.error('❌ Error fetching orders:', error);
+      toast.error('Failed to load order history');
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const fetchWishlist = async () => {
+    try {
+      setWishlistLoading(true);
+      console.log('💖 Fetching user wishlist...');
+      const response = await api.get('/wishlist');
+      console.log('✅ Wishlist fetched:', response);
+      
+      // Map the response to match the expected format
+      const wishlistData = response.wishlist?.items || response.items || [];
+      const formattedWishlist = wishlistData.map(item => ({
+        id: item.product?.id || item.product?._id || item.product_id,
+        name: item.product?.name || 'Unknown Product',
+        price: Number(item.product?.salePrice || item.product?.price || 0),
+        originalPrice: item.product?.price ? Number(item.product.price) : null,
+        image: item.product?.images?.[0] || '/placeholder-image.jpg',
+        inStock: (item.product?.stock || 0) > 0,
+        _id: item.id, // Backend item ID for removal
+      }));
+      
+      setWishlist(formattedWishlist);
+    } catch (error) {
+      console.error('❌ Error fetching wishlist:', error);
+      toast.error('Failed to load wishlist');
+      setWishlist([]);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleAddToCart = async (item) => {
+    try {
+      await dispatch(addToCartAsync({
+        productId: item.id,
+        size: 'M', // Default size
+        color: 'Default',
+        quantity: 1
+      })).unwrap();
+      toast.success('Added to cart!');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Failed to add to cart');
+    }
+  };
+
+  const handleRemoveFromWishlist = async (itemId) => {
+    try {
+      await dispatch(removeFromWishlistAsync(itemId)).unwrap();
+      // Refresh wishlist
+      fetchWishlist();
+      toast.success('Removed from wishlist');
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      toast.error('Failed to remove from wishlist');
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle nested address fields
+    if (name.startsWith('address.')) {
+      const addressField = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [addressField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
-  const handleSaveProfile = () => {
-    // Here you would typically make an API call to update the profile
-    toast.success('Profile updated successfully!');
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    try {
+      setIsSaving(true);
+      console.log('💾 Saving profile:', formData);
+      
+      // Prepare data for API
+      const profileData = {
+        name: formData.name,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        address: formData.address
+      };
+
+      const response = await updateProfile(profileData);
+      console.log('✅ Profile updated:', response);
+      
+      // Update user in Redux store
+      dispatch(updateUser({
+        ...user,
+        ...profileData
+      }));
+      
+      toast.success('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -177,52 +292,36 @@ const Profile = () => {
                   </div>
 
                   <form className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleChange}
-                          disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleChange}
-                          disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Email Address
                       </label>
                       <input
                         type="email"
                         name="email"
                         value={formData.email}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
+                        disabled={true}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Email cannot be changed</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Phone Number
                       </label>
                       <input
@@ -231,14 +330,14 @@ const Profile = () => {
                         value={formData.phone}
                         onChange={handleChange}
                         disabled={!isEditing}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         placeholder="(123) 456-7890"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Date of Birth
                         </label>
                         <input
@@ -247,12 +346,12 @@ const Profile = () => {
                           value={formData.dateOfBirth}
                           onChange={handleChange}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Gender
                         </label>
                         <select
@@ -260,7 +359,7 @@ const Profile = () => {
                           value={formData.gender}
                           onChange={handleChange}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-50 disabled:text-gray-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                           <option value="">Select Gender</option>
                           <option value="male">Male</option>
@@ -271,19 +370,102 @@ const Profile = () => {
                       </div>
                     </div>
 
+                    {/* Address Section */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Address</h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Street Address
+                          </label>
+                          <input
+                            type="text"
+                            name="address.street"
+                            value={formData.address?.street || ''}
+                            onChange={handleChange}
+                            disabled={!isEditing}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              City
+                            </label>
+                            <input
+                              type="text"
+                              name="address.city"
+                              value={formData.address?.city || ''}
+                              onChange={handleChange}
+                              disabled={!isEditing}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              State/Province
+                            </label>
+                            <input
+                              type="text"
+                              name="address.state"
+                              value={formData.address?.state || ''}
+                              onChange={handleChange}
+                              disabled={!isEditing}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              ZIP/Postal Code
+                            </label>
+                            <input
+                              type="text"
+                              name="address.zipCode"
+                              value={formData.address?.zipCode || ''}
+                              onChange={handleChange}
+                              disabled={!isEditing}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Country
+                            </label>
+                            <input
+                              type="text"
+                              name="address.country"
+                              value={formData.address?.country || ''}
+                              onChange={handleChange}
+                              disabled={!isEditing}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     {isEditing && (
                       <div className="flex space-x-4">
                         <button
                           type="button"
                           onClick={handleSaveProfile}
-                          className="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                          disabled={isSaving}
+                          className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Save Changes
+                          {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setIsEditing(false)}
-                          className="bg-gray-200 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                          disabled={isSaving}
+                          className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-6 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancel
                         </button>
@@ -296,7 +478,7 @@ const Profile = () => {
               {/* Order History Tab */}
               {activeTab === 'orders' && (
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-6">Order History</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Order History</h1>
                   
                   {ordersLoading ? (
                     <div className="flex justify-center py-12">
@@ -304,14 +486,14 @@ const Profile = () => {
                     </div>
                   ) : orders.length === 0 ? (
                     <div className="text-center py-12">
-                      <HiOutlineTruck className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No orders yet</h3>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <HiOutlineTruck className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No orders yet</h3>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Start shopping to see your orders here.
                       </p>
                       <button
                         onClick={() => navigate('/products')}
-                        className="mt-4 bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                        className="mt-4 bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
                       >
                         Browse Products
                       </button>
@@ -319,60 +501,66 @@ const Profile = () => {
                   ) : (
                     <div className="space-y-6">
                       {orders.map((order) => (
-                      <div key={order.id} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="font-semibold text-gray-900">Order {order.id}</h3>
-                            <p className="text-sm text-gray-600">
-                              Placed on {new Date(order.date).toLocaleDateString()}
-                            </p>
+                        <div key={order.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">Order #{order.orderNumber || order.id}</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Placed on {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
+                                {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown'}
+                              </span>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">
+                                Rs. {order.total ? order.total.toFixed(2) : '0.00'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
-                            <p className="text-sm font-medium text-gray-900 mt-1">
-                              Rs. {order.total.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          {order.items.map((item, index) => (
-                            <div key={index} className="flex justify-between items-center text-sm">
-                              <div>
-                                <span className="font-medium">{item.name}</span>
-                                <span className="text-gray-600 ml-2">
-                                  (Size: {item.size}, Color: {item.color}, Qty: {item.quantity})
+                          
+                          <div className="space-y-3">
+                            {order.items && order.items.map((item, index) => (
+                              <div key={index} className="flex justify-between items-center text-sm">
+                                <div>
+                                  <span className="font-medium text-gray-900 dark:text-white">
+                                    {item.name || item.productName || 'Unknown Product'}
+                                  </span>
+                                  <span className="text-gray-600 dark:text-gray-400 ml-2">
+                                    {item.size && `Size: ${item.size}`}
+                                    {item.color && `, Color: ${item.color}`}
+                                    {item.quantity && `, Qty: ${item.quantity}`}
+                                  </span>
+                                </div>
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  Rs. {item.price || item.total || '0.00'}
                                 </span>
                               </div>
-                              <span className="font-medium">Rs. {item.price}</span>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="flex space-x-3 mt-4 pt-4 border-t border-gray-200">
-                          <button 
-                            onClick={() => navigate(`/orders/${order.id}`)}
-                            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
-                          >
-                            <HiOutlineEye className="w-4 h-4 mr-1" />
-                            View Details
-                          </button>
-                          {(order.status === 'delivered' || order.status === 'completed') && (
-                            <button className="text-sm text-gray-600 hover:text-gray-800">
-                              Reorder
+                            ))}
+                          </div>
+                          
+                          <div className="flex space-x-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <button 
+                              onClick={() => navigate(`/orders/${order.id}`)}
+                              className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                            >
+                              <HiOutlineEye className="w-4 h-4 mr-1" />
+                              View Details
                             </button>
-                          )}
-                          {order.status === 'shipped' && (
-                            <button className="text-sm text-gray-600 hover:text-gray-800">
-                              Track Package
-                            </button>
-                          )}
+                            {(order.status === 'delivered' || order.status === 'completed') && (
+                              <button className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300">
+                                Reorder
+                              </button>
+                            )}
+                            {order.status === 'shipped' && (
+                              <button className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300">
+                                Track Package
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
@@ -381,38 +569,21 @@ const Profile = () => {
               {activeTab === 'addresses' && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Saved Addresses</h1>
-                    <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
-                      Add New Address
-                    </button>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Saved Addresses</h1>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {addresses.map((address) => (
-                      <div key={address.id} className="border border-gray-200 rounded-lg p-4 relative">
-                        {address.isDefault && (
-                          <span className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                            Default
-                          </span>
-                        )}
-                        <div className="mb-3">
-                          <h3 className="font-medium text-gray-900">{address.type}</h3>
-                          <p className="text-sm text-gray-600">{address.name}</p>
-                        </div>
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <p>{address.address}</p>
-                          <p>{address.city}, {address.state} {address.zipCode}</p>
-                        </div>
-                        <div className="flex space-x-2 mt-4">
-                          <button className="text-sm text-blue-600 hover:text-blue-800">
-                            Edit
-                          </button>
-                          <button className="text-sm text-red-600 hover:text-red-800">
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-center py-12">
+                    <HiOutlineLocationMarker className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Address Management Coming Soon</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      You can update your default address in Account Info tab.
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('account')}
+                      className="mt-4 bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                    >
+                      Go to Account Info
+                    </button>
                   </div>
                 </div>
               )}
@@ -420,52 +591,81 @@ const Profile = () => {
               {/* Wishlist Tab */}
               {activeTab === 'wishlist' && (
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-6">My Wishlist</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">My Wishlist</h1>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {wishlist.map((item) => (
-                      <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="p-4">
-                          <h3 className="font-medium text-gray-900 mb-2">{item.name}</h3>
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <span className="text-lg font-semibold text-gray-900">
-                                Rs. {item.price}
-                              </span>
-                              {item.originalPrice && (
-                                <span className="text-sm text-gray-500 line-through ml-2">
-                                  Rs. {item.originalPrice}
+                  {wishlistLoading ? (
+                    <div className="flex justify-center py-12">
+                      <LoadingSpinner />
+                    </div>
+                  ) : wishlist.length === 0 ? (
+                    <div className="text-center py-12">
+                      <HiOutlineHeart className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Your wishlist is empty</h3>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Start adding items you love to your wishlist.
+                      </p>
+                      <button
+                        onClick={() => navigate('/products')}
+                        className="mt-4 bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                      >
+                        Browse Products
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {wishlist.map((item) => (
+                        <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-48 object-cover cursor-pointer"
+                            onClick={() => navigate(`/products/${item.id}`)}
+                          />
+                          <div className="p-4">
+                            <h3 className="font-medium text-gray-900 dark:text-white mb-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                                onClick={() => navigate(`/products/${item.id}`)}>
+                              {item.name}
+                            </h3>
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  Rs. {Number(item.price || 0).toFixed(2)}
                                 </span>
-                              )}
+                                {item.originalPrice && item.originalPrice !== item.price && (
+                                  <span className="text-sm text-gray-500 dark:text-gray-400 line-through ml-2">
+                                    Rs. {Number(item.originalPrice || 0).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                item.inStock
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {item.inStock ? 'In Stock' : 'Out of Stock'}
+                              </span>
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              item.inStock
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {item.inStock ? 'In Stock' : 'Out of Stock'}
-                            </span>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              disabled={!item.inStock}
-                              className="flex-1 bg-black text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            >
-                              Add to Cart
-                            </button>
-                            <button className="text-red-600 hover:text-red-800 p-2">
-                              <HiOutlineHeart className="w-5 h-5" />
-                            </button>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleAddToCart(item)}
+                                disabled={!item.inStock}
+                                className="flex-1 bg-black dark:bg-white text-white dark:text-black py-2 px-4 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Add to Cart
+                              </button>
+                              <button 
+                                onClick={() => handleRemoveFromWishlist(item._id)}
+                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-2 border border-red-600 dark:border-red-400 rounded-md"
+                                title="Remove from wishlist"
+                              >
+                                <HiOutlineHeart className="w-5 h-5 fill-current" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -473,52 +673,21 @@ const Profile = () => {
               {activeTab === 'payment' && (
                 <div>
                   <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-                    <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
-                      Add New Card
-                    </button>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Methods</h1>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center">
-                          <span className="text-xs font-bold">VISA</span>
-                        </div>
-                        <div>
-                          <p className="font-medium">**** **** **** 1234</p>
-                          <p className="text-sm text-gray-600">Expires 12/27</p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="text-sm text-blue-600 hover:text-blue-800">
-                          Edit
-                        </button>
-                        <button className="text-sm text-red-600 hover:text-red-800">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center">
-                          <span className="text-xs font-bold">MC</span>
-                        </div>
-                        <div>
-                          <p className="font-medium">**** **** **** 5678</p>
-                          <p className="text-sm text-gray-600">Expires 08/26</p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="text-sm text-blue-600 hover:text-blue-800">
-                          Edit
-                        </button>
-                        <button className="text-sm text-red-600 hover:text-red-800">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
+                  <div className="text-center py-12">
+                    <HiOutlineCreditCard className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Payment Management Coming Soon</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      You can securely pay during checkout using various payment methods.
+                    </p>
+                    <button
+                      onClick={() => navigate('/products')}
+                      className="mt-4 bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+                    >
+                      Start Shopping
+                    </button>
                   </div>
                 </div>
               )}
