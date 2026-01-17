@@ -5,8 +5,8 @@ import { ToastContainer } from 'react-toastify';
 import { store } from './store/store';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { checkAuth } from './store/slices/authSlice';
-import { loadLocalCart, loadUserCart } from './store/slices/cartSlice';
-import { loadLocalWishlist, loadUserWishlist } from './store/slices/wishlistSlice';
+import { loadLocalCart, loadUserCart, fetchCart } from './store/slices/cartSlice';
+import { loadLocalWishlist, loadUserWishlist, fetchWishlist } from './store/slices/wishlistSlice';
 import { syncLocalToUserProfile } from './utils/userDataSync';
 
 // Layout Components
@@ -102,22 +102,30 @@ function AppContent() {
         }
         
         try {
-          console.log('🔄 Customer authenticated, syncing data...');
+          console.log('🔄 Customer authenticated, fetching cart and wishlist from backend...');
           
-          // Sync local cart/wishlist to Firebase and get merged data
-          const syncedData = await syncLocalToUserProfile(user.uid);
-          
-          // Load the merged data into Redux
-          dispatch(loadUserCart(syncedData.cart));
-          dispatch(loadUserWishlist(syncedData.wishlist));
+          // Fetch cart and wishlist from backend API
+          await Promise.all([
+            dispatch(fetchCart()).unwrap(),
+            dispatch(fetchWishlist()).unwrap()
+          ]);
           
           setDataSynced(true);
-          console.log('✅ Customer data synced successfully');
+          console.log('✅ Customer cart/wishlist loaded from backend');
         } catch (error) {
-          console.error('❌ Error syncing user data:', error);
-          // Fallback: just load local data
-          dispatch(loadLocalCart());
-          dispatch(loadLocalWishlist());
+          console.error('❌ Error fetching user data from backend:', error);
+          // Fallback: try to sync local data to backend
+          try {
+            const syncedData = await syncLocalToUserProfile(user.uid);
+            dispatch(loadUserCart(syncedData.cart));
+            dispatch(loadUserWishlist(syncedData.wishlist));
+            console.log('✅ Fallback: synced local data to backend');
+          } catch (syncError) {
+            console.error('❌ Fallback sync failed, loading local data:', syncError);
+            dispatch(loadLocalCart());
+            dispatch(loadLocalWishlist());
+          }
+          setDataSynced(true);
         }
       }
     };

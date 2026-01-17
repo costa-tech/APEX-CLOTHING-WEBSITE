@@ -17,3 +17,5 @@ jboss/server/minimal/work/**/*
 # deployed package files #
 
 *.DEPLOYED
+config.bat
+node_modules

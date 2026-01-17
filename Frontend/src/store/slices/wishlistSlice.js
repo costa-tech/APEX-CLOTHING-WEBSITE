@@ -144,19 +144,28 @@ const wishlistSlice = createSlice({
       .addCase(fetchWishlist.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })      .addCase(fetchWishlist.fulfilled, (state, action) => {
+      })
+      .addCase(fetchWishlist.fulfilled, (state, action) => {
         state.isLoading = false;
-        console.log('Fetch wishlist response:', action.payload);
+        console.log('✅ Fetch wishlist response:', action.payload);
         
         if (action.payload && action.payload.items) {
           state.items = action.payload.items.map(item => ({
-            id: item.product._id,
-            name: item.product.name,
-            price: item.product.price,
-            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
-            originalPrice: item.product.originalPrice,
-            onSale: item.product.onSale,
+            id: item.id, // Backend item ID for removal
+            _id: item.id,
+            product_id: item.product_id,
+            product: {
+              id: item.product?.id || item.product?._id,
+              _id: item.product?.id || item.product?._id,
+              name: item.product?.name || 'Unknown Product',
+              price: item.product?.price,
+              salePrice: item.product?.salePrice,
+              images: item.product?.images || [],
+              stock: item.product?.stock || 0,
+              category: item.product?.category,
+            },
           }));
+          console.log('✅ Wishlist items mapped:', state.items.length, 'items');
         } else {
           // Handle empty wishlist
           state.items = [];
@@ -173,20 +182,29 @@ const wishlistSlice = createSlice({
       .addCase(addToWishlistAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
-      })      .addCase(addToWishlistAsync.fulfilled, (state, action) => {
+      })
+      .addCase(addToWishlistAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        console.log('Add to wishlist response:', action.payload);
+        console.log('✅ Add to wishlist response:', action.payload);
         
-        if (action.payload && action.payload.wishlist && action.payload.wishlist.items) {
-          state.items = action.payload.wishlist.items.map(item => ({
-            id: item.product._id,
-            name: item.product.name,
-            price: item.product.price,
-            image: item.product.images && item.product.images[0] ? item.product.images[0] : '/placeholder-image.jpg',
-            originalPrice: item.product.originalPrice,
-            onSale: item.product.onSale,
+        // The backend returns { status: 'success', message: '...', wishlist: { items: [...] } }
+        if (action.payload && action.payload.items) {
+          state.items = action.payload.items.map(item => ({
+            id: item.id, // Backend item ID for removal
+            _id: item.id,
+            product_id: item.product_id,
+            product: {
+              id: item.product?.id || item.product?._id,
+              _id: item.product?.id || item.product?._id,
+              name: item.product?.name || 'Unknown Product',
+              price: item.product?.price,
+              salePrice: item.product?.salePrice,
+              images: item.product?.images || [],
+              stock: item.product?.stock || 0,
+              category: item.product?.category,
+            },
           }));
-          toast.success('Item added to wishlist');
+          toast.success('Added to wishlist');
         } else {
           console.error('Unexpected wishlist response structure:', action.payload);
           toast.error('Added to wishlist but failed to update display');
@@ -195,20 +213,28 @@ const wishlistSlice = createSlice({
       .addCase(addToWishlistAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        console.error('❌ Add to wishlist failed:', action.payload);
         toast.error(action.payload || 'Failed to add to wishlist');
       })
       // Remove from Wishlist
       .addCase(removeFromWishlistAsync.fulfilled, (state, action) => {
         if (action.payload && action.payload.items) {
           state.items = action.payload.items.map(item => ({
-            id: item.product._id,
-            name: item.product.name,
-            price: item.product.price,
-            image: item.product.images[0],
-            originalPrice: item.product.originalPrice,
-            onSale: item.product.onSale,
+            id: item.id, // Backend item ID for removal
+            _id: item.id,
+            product_id: item.product_id,
+            product: {
+              id: item.product?.id || item.product?._id,
+              _id: item.product?.id || item.product?._id,
+              name: item.product?.name || 'Unknown Product',
+              price: item.product?.price,
+              salePrice: item.product?.salePrice,
+              images: item.product?.images || [],
+              stock: item.product?.stock || 0,
+              category: item.product?.category,
+            },
           }));
-          toast.success('Item removed from wishlist');
+          toast.success('Removed from wishlist');
         }
       })
       .addCase(removeFromWishlistAsync.rejected, (state, action) => {

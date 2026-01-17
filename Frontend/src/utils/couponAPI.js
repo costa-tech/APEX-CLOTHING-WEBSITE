@@ -9,7 +9,7 @@ export const getAllCoupons = async (filters = {}) => {
     if (filters.isActive !== undefined) params.append('isActive', filters.isActive);
     if (filters.type) params.append('type', filters.type);
 
-    const response = await api.get(`/v1/coupons?${params.toString()}`);
+    const response = await api.get(`/coupons?${params.toString()}`);
     return response;
   } catch (error) {
     console.error('Error fetching coupons:', error);
@@ -22,7 +22,7 @@ export const getAllCoupons = async (filters = {}) => {
  */
 export const createCoupon = async (couponData) => {
   try {
-    const response = await api.post('/v1/coupons', couponData);
+    const response = await api.post('/coupons', couponData);
     return response;
   } catch (error) {
     console.error('Error creating coupon:', error);
@@ -35,7 +35,7 @@ export const createCoupon = async (couponData) => {
  */
 export const updateCoupon = async (couponId, couponData) => {
   try {
-    const response = await api.put(`/v1/coupons/${couponId}`, couponData);
+    const response = await api.put(`/coupons/${couponId}`, couponData);
     return response;
   } catch (error) {
     console.error('Error updating coupon:', error);
@@ -48,7 +48,7 @@ export const updateCoupon = async (couponId, couponData) => {
  */
 export const deleteCoupon = async (couponId) => {
   try {
-    const response = await api.delete(`/v1/coupons/${couponId}`);
+    const response = await api.delete(`/coupons/${couponId}`);
     return response;
   } catch (error) {
     console.error('Error deleting coupon:', error);
@@ -61,7 +61,7 @@ export const deleteCoupon = async (couponId) => {
  */
 export const validateCoupon = async (code, orderAmount) => {
   try {
-    const response = await api.post('/v1/coupons/validate', {
+    const response = await api.post('/coupons/validate', {
       code,
       orderAmount,
     });
@@ -77,7 +77,7 @@ export const validateCoupon = async (code, orderAmount) => {
  */
 export const useCoupon = async (code, orderId) => {
   try {
-    const response = await api.post('/v1/coupons/use', {
+    const response = await api.post('/coupons/use', {
       code,
       orderId,
     });
