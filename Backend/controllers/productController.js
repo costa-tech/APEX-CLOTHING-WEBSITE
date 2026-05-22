@@ -2,6 +2,58 @@ const { db, storage } = require('../config/firebase');
 
 const productsCollection = db.collection('products');
 
+const normalizeFeatureList = (features) => {
+  if (Array.isArray(features)) {
+    return features.map((feature) => `${feature}`.trim()).filter(Boolean);
+  }
+
+  if (typeof features === 'string') {
+    return features
+      .split('\n')
+      .map((feature) => feature.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const normalizeSpecificationMap = (specifications) => {
+  if (specifications && typeof specifications === 'object' && !Array.isArray(specifications)) {
+    return specifications;
+  }
+
+  if (typeof specifications === 'string') {
+    return specifications.split('\n').reduce((accumulator, line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) {
+        return accumulator;
+      }
+
+      const separatorIndex = trimmedLine.indexOf(':');
+      if (separatorIndex === -1) {
+        accumulator[trimmedLine] = '';
+        return accumulator;
+      }
+
+      const key = trimmedLine.slice(0, separatorIndex).trim();
+      const value = trimmedLine.slice(separatorIndex + 1).trim();
+      if (key) {
+        accumulator[key] = value;
+      }
+
+      return accumulator;
+    }, {});
+  }
+
+  return {};
+};
+
+const normalizeProductContent = (productData) => ({
+  ...productData,
+  features: normalizeFeatureList(productData.features),
+  specifications: normalizeSpecificationMap(productData.specifications),
+});
+
 /**
  * Get all products with optional filters
  */
@@ -197,7 +249,7 @@ exports.searchProducts = async (req, res) => {
 exports.createProduct = async (req, res) => {
   try {
     const productData = {
-      ...req.body,
+      ...normalizeProductContent(req.body),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: req.user.uid,
@@ -242,7 +294,7 @@ exports.updateProduct = async (req, res) => {
     }
 
     const updateData = {
-      ...req.body,
+      ...normalizeProductContent(req.body),
       updatedAt: new Date().toISOString(),
       updatedBy: req.user.uid,
     };
@@ -497,6 +549,85 @@ exports.uploadProductImage = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to upload image',
+    });
+  }
+};
+
+/**
+ * Add review to product
+ */
+exports.addProductReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rating = Number(req.body.rating);
+    const comment = `${req.body.comment || ''}`.trim();
+
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Rating must be between 1 and 5',
+      });
+    }
+
+    if (!comment) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Review comment is required',
+      });
+    }
+
+    const doc = await productsCollection.doc(id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Product not found',
+      });
+    }
+
+    const currentData = doc.data();
+    const existingReviews = Array.isArray(currentData.reviews) ? currentData.reviews : [];
+    const reviewerName = req.user.name || req.user.displayName || req.user.email?.split('@')[0] || 'Customer';
+    const newReview = {
+      id: `${Date.now()}-${req.user.uid}`,
+      userId: req.user.uid,
+      userName: reviewerName,
+      userEmail: req.user.email || '',
+      rating,
+      comment,
+      createdAt: new Date().toISOString(),
+    };
+
+    const reviews = [newReview, ...existingReviews].slice(0, 50);
+    const averageRating = reviews.length > 0
+      ? Number((reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length).toFixed(1))
+      : rating;
+
+    await productsCollection.doc(id).update({
+      reviews,
+      rating: {
+        average: averageRating,
+        count: reviews.length,
+      },
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user.uid,
+    });
+
+    const updatedDoc = await productsCollection.doc(id).get();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Review added successfully',
+      data: {
+        id: updatedDoc.id,
+        ...updatedDoc.data(),
+      },
+    });
+  } catch (error) {
+    console.error('Add product review error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to add review',
     });
   }
 };

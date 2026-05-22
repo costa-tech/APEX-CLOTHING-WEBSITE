@@ -237,10 +237,10 @@ const AdminCoupons = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-semibold">
-                      {coupon.type === 'percentage' ? `${coupon.value}%` : `$${coupon.value}`}
+                      {coupon.type === 'percentage' ? `${coupon.value}%` : `Rs. ${Number(coupon.value).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </span>
                     {coupon.maxDiscount && coupon.type === 'percentage' && (
-                      <span className="text-xs text-gray-500 ml-1">(max ${coupon.maxDiscount})</span>
+                      <span className="text-xs text-gray-500 ml-1">(max Rs. {Number(coupon.maxDiscount).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -329,7 +329,7 @@ const AdminCoupons = () => {
                       required
                     >
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount ($)</option>
+                      <option value="fixed">Fixed Amount (Rs.)</option>
                     </select>
                   </div>
 
@@ -349,7 +349,7 @@ const AdminCoupons = () => {
                       required
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      {formData.type === 'percentage' ? 'Percentage discount' : 'Fixed dollar amount'}
+                      {formData.type === 'percentage' ? 'Percentage discount' : 'Fixed rupee amount'}
                     </p>
                   </div>
 
@@ -357,7 +357,7 @@ const AdminCoupons = () => {
                   {formData.type === 'percentage' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Discount ($)
+                          Max Discount (Rs.)
                       </label>
                       <input
                         type="number"
@@ -375,7 +375,7 @@ const AdminCoupons = () => {
                   {/* Min Order Amount */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Min Order Amount ($)
+                      Min Order Amount (Rs.)
                     </label>
                     <input
                       type="number"

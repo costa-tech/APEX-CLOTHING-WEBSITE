@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addToCartAsync } from '../store/slices/cartSlice';
 import { addToWishlistAsync, removeFromWishlistAsync } from '../store/slices/wishlistSlice';
 import { fetchProductById, clearCurrentProduct } from '../store/slices/productSlice';
+import api from '../utils/api';
 import { HiOutlineHeart, HiHeart, HiOutlineStar, HiStar, HiOutlineShare, HiOutlineTruck, HiOutlineShieldCheck, HiOutlineRefresh } from 'react-icons/hi';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -22,6 +23,9 @@ const ProductDetail = () => {
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
   // Fallback mock product data for development
   const mockProduct = {
     _id: id,
@@ -60,11 +64,52 @@ const ProductDetail = () => {
       'Care': 'Machine wash cold, tumble dry low',
       'Weight': '120gsm',
       'Origin': 'Made in Portugal'
-    }
+    },
+    reviews: [
+      {
+        id: 'review-1',
+        userName: 'Alex M.',
+        rating: 5,
+        comment: 'Great fit and the fabric feels premium.',
+        createdAt: '2026-04-20T10:00:00.000Z',
+      },
+      {
+        id: 'review-2',
+        userName: 'Jordan R.',
+        rating: 4,
+        comment: 'Very comfortable for workouts and casual wear.',
+        createdAt: '2026-04-18T14:30:00.000Z',
+      },
+    ]
   };
 
   // Use current product from store or fallback to mock data (prioritize mock for development)
   const productData = currentProduct?.product || currentProduct || mockProduct;
+
+  const reviewItems = Array.isArray(productData.reviews)
+    ? productData.reviews
+    : Array.isArray(productData.reviewItems)
+      ? productData.reviewItems
+      : [];
+
+  const averageRating = (() => {
+    if (typeof productData.rating === 'object' && productData.rating?.average) {
+      return productData.rating.average;
+    }
+
+    if (reviewItems.length > 0) {
+      const totalRating = reviewItems.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+      return Number((totalRating / reviewItems.length).toFixed(1));
+    }
+
+    return productData.rating || 4.5;
+  })();
+
+  const reviewCount = reviewItems.length > 0
+    ? (typeof productData.rating === 'object' && productData.rating.count ? productData.rating.count : reviewItems.length)
+    : typeof productData.rating === 'object'
+      ? productData.rating.count || 0
+      : productData.reviews || 0;
 
   // Normalize the product data to handle both backend format and mock format
   const product = {
@@ -76,8 +121,9 @@ const ProductDetail = () => {
     images: Array.isArray(productData.images) 
       ? productData.images.map(img => typeof img === 'string' ? img : img.url || img)
       : [productData.images],
-    rating: typeof productData.rating === 'object' ? productData.rating.average : productData.rating || 4.5,
-    reviews: typeof productData.rating === 'object' ? productData.rating.count : productData.reviews || 0,
+    rating: averageRating,
+    reviewCount,
+    reviewItems,
     isNew: productData.isNew || false,
     onSale: productData.onSale || (productData.comparePrice && productData.comparePrice > productData.price),
     sizes: Array.isArray(productData.sizes) 
@@ -212,6 +258,40 @@ const ProductDetail = () => {
     // Toast notification is shown by wishlistSlice reducer
   };
 
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      toast.error('Please login to submit a review');
+      navigate('/login');
+      return;
+    }
+
+    if (!reviewComment.trim()) {
+      toast.error('Please write a review comment');
+      return;
+    }
+
+    setSubmittingReview(true);
+
+    try {
+      await api.post(`/products/${id}/reviews`, {
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+
+      toast.success('Review submitted successfully');
+      setReviewComment('');
+      setReviewRating(5);
+      await dispatch(fetchProductById(id)).unwrap();
+      setActiveTab('reviews');
+    } catch (reviewError) {
+      toast.error(reviewError.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const isWishlisted = wishlistItems.some(item => 
     item.product?.id === product.id || 
     item.product?._id === product.id ||
@@ -323,7 +403,7 @@ const ProductDetail = () => {
                   {renderStars(product.rating)}
                 </div>
                 <span className="ml-2 text-sm text-gray-600">
-                  {product.rating} ({product.reviews} reviews)
+                  {product.rating} ({product.reviewCount} reviews)
                 </span>
               </div>
             </div>
@@ -501,8 +581,73 @@ const ProductDetail = () => {
             {activeTab === 'reviews' && (
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Reviews</h3>
-                <div className="text-center py-8 text-gray-500">
-                  <p>Reviews feature coming soon!</p>
+                <form onSubmit={handleReviewSubmit} className="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                      <select
+                        value={reviewRating}
+                        onChange={(e) => setReviewRating(Number(e.target.value))}
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-black focus:outline-none focus:ring-2 focus:ring-black"
+                      >
+                        {[5, 4, 3, 2, 1].map((ratingValue) => (
+                          <option key={ratingValue} value={ratingValue}>
+                            {ratingValue} star{ratingValue > 1 ? 's' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-end">
+                      <div className="text-sm text-gray-600">
+                        Share your experience with fit, quality, and comfort.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      rows={4}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-black focus:outline-none focus:ring-2 focus:ring-black"
+                      placeholder="Tell other customers what you think about this product"
+                    />
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={submittingReview}
+                      className="rounded-md bg-black px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="space-y-4">
+                  {product.reviewItems.length > 0 ? (
+                    product.reviewItems.map((review) => (
+                      <article key={review.id || `${review.userName}-${review.createdAt}`} className="rounded-lg border border-gray-200 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900">{review.userName || 'Customer'}</h4>
+                            <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                              <div className="flex items-center">{renderStars(Number(review.rating || 0))}</div>
+                              <span>{new Date(review.createdAt || Date.now()).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-sm leading-relaxed text-gray-600">{review.comment}</p>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No reviews yet. Be the first to leave one.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
