@@ -103,3 +103,7 @@ export const uploadProductImages = async (productId, images) => {
     },
   });
 };
+
+export const addProductReview = async (productId, reviewData) => {
+  return await api.post(`/products/${productId}/reviews`, reviewData);
+};

@@ -12,11 +12,14 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    features: '',
+    specifications: '',
     category: '', // Men, Women, Accessories
     subcategory: '', // Tops, Bottoms, Activewear, etc.
     brand: '',
     price: '',
     comparePrice: '',
+    discountPercentage: '',
     cost: '',
     stock: '',
     sku: '',
@@ -46,6 +49,79 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   const [newTag, setNewTag] = useState('');
   const [activeTab, setActiveTab] = useState('general');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const MAX_IMAGES = 4;
+
+  const formatFeaturesForForm = (features) => {
+    if (Array.isArray(features)) {
+      return features.join('\n');
+    }
+
+    return `${features || ''}`;
+  };
+
+  const formatSpecificationsForForm = (specifications) => {
+    if (specifications && typeof specifications === 'object' && !Array.isArray(specifications)) {
+      return Object.entries(specifications)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+    }
+
+    return `${specifications || ''}`;
+  };
+
+  const calculateComparePrice = (price, discountPercentage) => {
+    const numericPrice = Number(price);
+    const numericDiscount = Number(discountPercentage);
+
+    if (!numericPrice || !numericDiscount || numericDiscount <= 0 || numericDiscount >= 100) {
+      return '';
+    }
+
+    return (numericPrice / (1 - (numericDiscount / 100))).toFixed(2);
+  };
+
+  const calculateDiscountPercentage = (price, comparePrice) => {
+    const numericPrice = Number(price);
+    const numericComparePrice = Number(comparePrice);
+
+    if (!numericPrice || !numericComparePrice || numericComparePrice <= numericPrice) {
+      return '';
+    }
+
+    return Math.round(((numericComparePrice - numericPrice) / numericComparePrice) * 100);
+  };
+
+  const parseFeaturesFromForm = (features) => {
+    return `${features || ''}`
+      .split('\n')
+      .map((feature) => feature.trim())
+      .filter(Boolean);
+  };
+
+  const parseSpecificationsFromForm = (specifications) => {
+    return `${specifications || ''}`.split('\n').reduce((accumulator, line) => {
+      const trimmedLine = line.trim();
+
+      if (!trimmedLine) {
+        return accumulator;
+      }
+
+      const separatorIndex = trimmedLine.indexOf(':');
+      if (separatorIndex === -1) {
+        accumulator[trimmedLine] = '';
+        return accumulator;
+      }
+
+      const key = trimmedLine.slice(0, separatorIndex).trim();
+      const value = trimmedLine.slice(separatorIndex + 1).trim();
+
+      if (key) {
+        accumulator[key] = value;
+      }
+
+      return accumulator;
+    }, {});
+  };
 
   // Main categories
   const mainCategories = ['Men', 'Women', 'Accessories'];
@@ -71,6 +147,9 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
         variants: product.variants || [],
         tags: product.tags || [],
         images: product.images || [],
+        features: formatFeaturesForForm(product.features),
+        specifications: formatSpecificationsForForm(product.specifications),
+        discountPercentage: calculateDiscountPercentage(product.price, product.comparePrice),
         seo: product.seo || {
           title: '',
           description: '',
@@ -122,15 +201,31 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setUploadingImage(true);
-      try {
-        // Create form data for file upload
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      return;
+    }
+
+    const availableSlots = MAX_IMAGES - formData.images.length;
+    if (availableSlots <= 0) {
+      toast.error(`You can add up to ${MAX_IMAGES} photos only`);
+      e.target.value = '';
+      return;
+    }
+
+    const filesToUpload = files.slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      toast.info(`Only the first ${availableSlots} photo${availableSlots > 1 ? 's' : ''} will be added`);
+    }
+
+    setUploadingImage(true);
+    try {
+      const uploadedImages = [];
+
+      for (const file of filesToUpload) {
         const formData = new FormData();
         formData.append('image', file);
 
-        // Upload to backend to save in public/Images folder
         const response = await api.post('/products/upload-image', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
@@ -139,23 +234,43 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
 
         console.log('📸 Image upload response:', response);
 
-        if (response.status === 'success') {
-          const imageUrl = response.data.imagePath; // e.g., "/Images/product-123456.jpg"
-          console.log('📸 Image URL:', imageUrl);
-          setImagePreview(imageUrl);
-          setFormData(prev => ({
-            ...prev,
-            images: [imageUrl, ...prev.images.filter(img => img !== imageUrl)],
-          }));
-          toast.success('✅ Image uploaded successfully!');
+        if (response.status === 'success' && response.data?.imagePath) {
+          uploadedImages.push(response.data.imagePath);
         }
-      } catch (error) {
-        console.error('Image upload error:', error);
-        toast.error('Failed to upload image');
-      } finally {
-        setUploadingImage(false);
       }
+
+      if (uploadedImages.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, ...uploadedImages].slice(0, MAX_IMAGES),
+        }));
+        setImagePreview(uploadedImages[0] || formData.images[0] || imagePreview);
+        toast.success(`✅ ${uploadedImages.length} photo${uploadedImages.length > 1 ? 's' : ''} uploaded successfully!`);
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
     }
+  };
+
+  const removeImage = (imageToRemove) => {
+    setFormData(prev => {
+      const updatedImages = prev.images.filter(image => image !== imageToRemove);
+      if (updatedImages.length > 0 && imagePreview === imageToRemove) {
+        setImagePreview(updatedImages[0]);
+      }
+      if (updatedImages.length === 0) {
+        setImagePreview('');
+      }
+
+      return {
+        ...prev,
+        images: updatedImages,
+      };
+    });
   };
 
   const addTag = () => {
@@ -225,9 +340,16 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
       return;
     }
 
+    const comparePrice = formData.discountPercentage
+      ? calculateComparePrice(formData.price, formData.discountPercentage)
+      : formData.comparePrice;
+
     // Set the first image in the images array as the main product.image
     const productData = {
       ...formData,
+      comparePrice,
+      features: parseFeaturesFromForm(formData.features),
+      specifications: parseSpecificationsFromForm(formData.specifications),
       image: formData.images[0] || imagePreview || '',
     };
 
@@ -328,6 +450,38 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Features
+                    </label>
+                    <textarea
+                      name="features"
+                      value={formData.features}
+                      onChange={handleInputChange}
+                      rows={6}
+                      placeholder="One feature per line"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">Add each feature on a new line.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Specifications
+                    </label>
+                    <textarea
+                      name="specifications"
+                      value={formData.specifications}
+                      onChange={handleInputChange}
+                      rows={6}
+                      placeholder="Material: 100% cotton"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">Use one key/value pair per line.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Category *
                     </label>
                     <select
@@ -394,7 +548,7 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Price *
+                      Price (Rs.) *
                     </label>
                     <input
                       type="number"
@@ -410,7 +564,25 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Compare Price
+                      Discount (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="discountPercentage"
+                      value={formData.discountPercentage}
+                      onChange={handleInputChange}
+                      step="1"
+                      min="0"
+                      max="99"
+                      placeholder="10"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">Enter a discount to auto-calculate the original price.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Original Price (Rs.)
                     </label>
                     <input
                       type="number"
@@ -421,11 +593,14 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
                       min="0"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                     />
+                    <p className="mt-2 text-xs text-gray-500">Used when no discount is entered.</p>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cost per Item
+                      Cost per Item (Rs.)
                     </label>
                     <input
                       type="number"
@@ -449,20 +624,37 @@ const ProductForm = ({ product, onClose, onSave, isLoading = false }) => {
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         onChange={handleImageUpload}
+                        disabled={uploadingImage || formData.images.length >= MAX_IMAGES}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                       />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Upload up to {MAX_IMAGES} product photos. {formData.images.length}/{MAX_IMAGES} used.
+                      </p>
                     </div>
-                    {imagePreview && (
-                      <div className="w-20 h-20 border border-gray-300 rounded-md overflow-hidden">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
                   </div>
+
+                  {formData.images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {formData.images.map((image, index) => (
+                        <div key={`${image}-${index}`} className="relative rounded-md overflow-hidden border border-gray-200">
+                          <img
+                            src={image}
+                            alt={`Product ${index + 1}`}
+                            className="h-24 w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(image)}
+                            className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white hover:bg-black"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Tags */}

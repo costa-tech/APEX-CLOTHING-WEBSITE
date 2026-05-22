@@ -14,11 +14,17 @@ const productValidation = [
   body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
 ];
 
+const reviewValidation = [
+  body('rating').isFloat({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),
+  body('comment').trim().notEmpty().withMessage('Review comment is required'),
+];
+
 // Public routes
 router.get('/', productController.getAllProducts);
 router.get('/:id', productController.getProductById);
 router.get('/category/:category', productController.getProductsByCategory);
 router.get('/search/:query', productController.searchProducts);
+router.post('/:id/reviews', verifyToken, reviewValidation, validate, productController.addProductReview);
 
 // Protected routes (Admin only)
 router.post('/upload-image', verifyToken, isAdmin, productController.uploadProductImage); // Add this before other POST routes

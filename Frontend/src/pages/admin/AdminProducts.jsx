@@ -74,6 +74,22 @@ const AdminProducts = () => {
   const categories = ['all', 'Men', 'Women', 'Accessories'];
   const statuses = ['all', 'Active', 'Inactive', 'Out of Stock'];
 
+  const formatLkr = (value) => `Rs. ${Number(value || 0).toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+  const getDiscountPercent = (product) => {
+    const price = Number(product.price || 0);
+    const comparePrice = Number(product.comparePrice || 0);
+
+    if (!price || !comparePrice || comparePrice <= price) {
+      return 0;
+    }
+
+    return Math.round(((comparePrice - price) / comparePrice) * 100);
+  };
+
   // Fetch products from backend on mount
   useEffect(() => {
     const fetchProducts = async () => {
@@ -381,7 +397,15 @@ const AdminProducts = () => {
                       {product.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${product.price}
+                      <div className="flex flex-col">
+                        <span className="font-medium">{formatLkr(product.price)}</span>
+                        {product.comparePrice && Number(product.comparePrice) > Number(product.price) && (
+                          <span className="text-xs text-gray-500 line-through">
+                            {formatLkr(product.comparePrice)}
+                            {getDiscountPercent(product) > 0 && ` • ${getDiscountPercent(product)}% off`}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`font-medium ${getStockColor(product.stock)}`}>
